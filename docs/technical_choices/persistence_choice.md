@@ -1,79 +1,78 @@
-## 1. Besoin
+## 1. Requirements
 
-AREA stocke et manipule :
+AREA stores and handles:
 
-| Donnée | Nature | Contraintes |
+| Data | Nature | Constraints |
 |---|---|---|
-| Utilisateurs, rôles | relationnelle | unicité email, suppression de compte (RGPD) |
-| Services connectés + tokens OAuth | relationnelle + secret | chiffrement au repos, rotation |
-| Workflows (AREA) et nodes | graphe / document | structure variable selon le type de node, versionnée |
-| Événements détectés par les hooks | écriture fréquente | déduplication : un même événement ne doit jamais être traité deux fois |
-| Runs de workflow (historique) | append-only | entrées/sorties de chaque node, durée, statut, métriques |
-| Travaux en attente / retry / dead letter | file | pas de perte, rejouable, effet de bord non dupliqué |
+| Users, roles | relational | unique email, account deletion (GDPR) |
+| Connected services + OAuth tokens | relational + secret | encryption at rest, rotation |
+| Workflows (AREA) and nodes | graph / document | structure varies with the node type, versioned |
+| Events detected by hooks | frequent writes | deduplication: the same event must never be processed twice |
+| Workflow runs (history) | append-only | inputs/outputs of each node, duration, status, metrics |
+| Pending work / retry / dead letter | queue | no loss, replayable, side effects not duplicated |
 
-Exigences transverses tirées du sujet : hooks autonomes (sans client ouvert), backups horodatés hors du conteneur de la base, health endpoint distinguant la base, chiffrement de ce que révèle un dump, inventaire des données personnelles.
+Cross-cutting requirements from the subject: autonomous hooks (no client open), timestamped backups outside the database container, a health endpoint that reports the database, encryption of what a dump reveals, an inventory of personal data.
 
-## 2. Critères d'évaluation
+## 2. Evaluation criteria
 
-| # | Critère | Poids | Pourquoi |
+| # | Criterion | Weight | Why |
 |---|---|---|---|
-| C1 | Intégrité / transactions (ACID) | 3 | un run ne doit pas être à moitié enregistré |
-| C2 | Concurrence d'écriture | 3 | hooks + workers + API écrivent en parallèle |
-| C3 | Déduplication / idempotence | 3 | exigence centrale des hooks et du retry |
-| C4 | Modélisation (relationnel + semi-structuré) | 2 | workflows aux nodes hétérogènes |
-| C5 | Sécurité (chiffrement, droits, surface) | 3 | tokens OAuth, dump de base |
-| C6 | Exploitation Docker (backup, health, séparation de conteneurs) | 2 | features ENG additionnelles |
-| C7 | Support de l'écosystème Go | 2 | driver mature, tests faciles |
-| C8 | File de jobs sans broker | 2 | retry + dead letter sans composant en plus |
-| C9 | Courbe d'apprentissage de l'équipe | 1 | délai de 1 semaine pour le Plan |
+| C1 | Integrity / transactions (ACID) | 3 | a run must never be half recorded |
+| C2 | Write concurrency | 3 | hooks, workers and the API write in parallel |
+| C3 | Deduplication / idempotence | 3 | core requirement of hooks and retry |
+| C4 | Modeling (relational + semi-structured) | 2 | workflows with heterogeneous nodes |
+| C5 | Security (encryption, permissions, attack surface) | 3 | OAuth tokens, database dump |
+| C6 | Docker operations (backup, health, container separation) | 2 | additional ENG features |
+| C7 | Go ecosystem support | 2 | mature driver, easy testing |
+| C8 | Job queue without a broker | 2 | retry + dead letter without an extra component |
+| C9 | Team learning curve | 1 | one week for the Plan milestone |
 
-## 3. Comparaison
+## 3. Comparison
 
-### 3.1 Vue d'ensemble
+### 3.1 Overview
 
 | | PostgreSQL | SQLite | MongoDB |
 |---|---|---|---|
-| Modèle | relationnel (+ JSONB) | relationnel embarqué | documents (BSON) |
-| Architecture | serveur | fichier, dans le processus | serveur |
-| Persistance | WAL, durable | journal (WAL ou rollback), durable | journal + checkpoints, durable |
-| Transactions | complètes, multi-tables | complètes | multi-documents uniquement en replica set |
-| Écriture concurrente | MVCC, nombreux écrivains | un seul écrivain à la fois | verrouillage au niveau document |
-| Contrainte d'unicité | oui | oui | index unique |
-| `INSERT … ON CONFLICT` | oui | oui (≥ 3.24) | upsert / `E11000` |
-| Réclamation de jobs sans doublon | `FOR UPDATE SKIP LOCKED` | non (verrou global) | `findOneAndUpdate` atomique |
-| Driver Go | `pgx` (très mature) | `mattn/go-sqlite3` (cgo) ou `modernc.org/sqlite` (pur Go) | `mongo-go-driver` (officiel) |
-| Licence | PostgreSQL (permissive) | domaine public | SSPL (serveur) |
-| Accès depuis plusieurs conteneurs | oui (réseau) | non pratique (fichier partagé) | oui (réseau) |
+| Model | relational (+ JSONB) | embedded relational | documents (BSON) |
+| Architecture | server | file, in-process | server |
+| Persistence | WAL, durable | journal (WAL or rollback), durable | journal + checkpoints, durable |
+| Transactions | full, multi-table | full | multi-document only on a replica set |
+| Concurrent writes | MVCC, many writers | one writer at a time | document-level locking |
+| Uniqueness constraint | yes | yes | unique index |
+| `INSERT … ON CONFLICT` | yes | yes (≥ 3.24) | upsert / `E11000` |
+| Claiming jobs without duplicates | `FOR UPDATE SKIP LOCKED` | no (global lock) | atomic `findOneAndUpdate` |
+| Go driver | `pgx` (very mature) | `mattn/go-sqlite3` (cgo) or `modernc.org/sqlite` (pure Go) | `mongo-go-driver` (official) |
+| License | PostgreSQL (permissive) | public domain | SSPL (server) |
+| Access from several containers | yes (network) | impractical (shared file) | yes (network) |
 
-### 3.2 Notation (0 à 5, pondérée)
+### 3.2 Scoring (0 to 5, weighted)
 
-| Critère | Poids | PostgreSQL | SQLite | MongoDB |
+| Criterion | Weight | PostgreSQL | SQLite | MongoDB |
 |---|---|---|---|---|
 | C1 ACID | 3 | 5 | 5 | 3 |
-| C2 Concurrence d'écriture | 3 | 5 | 2 | 4 |
+| C2 Write concurrency | 3 | 5 | 2 | 4 |
 | C3 Idempotence | 3 | 5 | 4 | 4 |
-| C4 Modélisation | 2 | 4 | 3 | 5 |
-| C5 Sécurité | 3 | 4 | 3 | 3 |
-| C6 Exploitation Docker | 2 | 5 | 2 | 4 |
-| C7 Écosystème Go | 2 | 5 | 4 | 4 |
-| C8 File sans broker | 2 | 5 | 2 | 3 |
-| C9 Apprentissage | 1 | 3 | 5 | 3 |
-| Total pondéré (/105) | | 98 (≈ 93 %) | 69 (≈ 66 %) | 77 (≈ 73 %) |
+| C4 Modeling | 2 | 4 | 3 | 5 |
+| C5 Security | 3 | 4 | 3 | 3 |
+| C6 Docker operations | 2 | 5 | 2 | 4 |
+| C7 Go ecosystem | 2 | 5 | 4 | 4 |
+| C8 Queue without a broker | 2 | 5 | 2 | 3 |
+| C9 Learning curve | 1 | 3 | 5 | 3 |
+| Weighted total (/105) | | 98 (≈ 93%) | 69 (≈ 66%) | 77 (≈ 73%) |
 
+## 4. Analysis by criterion
 
-## 4. Analyse par critère
+### 4.1 Hook idempotence (C3)
 
-### 4.1 Idempotence des hooks (C3)
+A hook detects an event (new email, new commit…). It must record the event exactly once, even if polling sees it again.
 
-Un hook détecte un événement (nouveau mail, nouveau commit…). Il doit l'enregistrer une seule fois, même si le polling le revoit.
-
-Avec PostgreSQL :
+With PostgreSQL:
 
 ```sql
 CREATE TABLE events (
     id          BIGSERIAL PRIMARY KEY,
     area_id     BIGINT      NOT NULL REFERENCES areas(id) ON DELETE CASCADE,
-    external_id TEXT        NOT NULL,          -- identifiant côté service (id du mail, sha du commit…)
+    external_id TEXT        NOT NULL,          -- identifier on the service side (mail id, commit sha…)
     payload     JSONB       NOT NULL,
     seen_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (area_id, external_id)
@@ -81,7 +80,7 @@ CREATE TABLE events (
 ```
 
 ```go
-// true si l'événement est nouveau, false s'il était déjà connu
+// true if the event is new, false if it was already known
 func (s *Store) RecordEvent(ctx context.Context, areaID int64, extID string, payload []byte) (bool, error) {
     tag, err := s.pool.Exec(ctx, `
         INSERT INTO events (area_id, external_id, payload)
@@ -94,41 +93,41 @@ func (s *Store) RecordEvent(ctx context.Context, areaID int64, extID string, pay
 }
 ```
 
-La déduplication est portée par la base (contrainte d'unicité), donc elle reste correcte même avec plusieurs instances de hook.
+The database enforces deduplication through a uniqueness constraint, so it stays correct even with several hook instances.
 
-SQLite accepte la même requête (`ON CONFLICT DO NOTHING`). Son point faible est la concurrence (§4.2).
+SQLite accepts the same query (`ON CONFLICT DO NOTHING`). Its weak point is concurrency (§4.2).
 
-Avec MongoDB :
+With MongoDB:
 
 ```go
 _, err := coll.InsertOne(ctx, bson.M{"area_id": areaID, "external_id": extID, "payload": payload})
 if mongo.IsDuplicateKeyError(err) {
-    return false, nil // déjà vu
+    return false, nil // already seen
 }
 ```
 
-Il faut avoir créé l'index unique au préalable : `db.events.createIndex({area_id: 1, external_id: 1}, {unique: true})`.
+The unique index must exist beforehand: `db.events.createIndex({area_id: 1, external_id: 1}, {unique: true})`.
 
-### 4.2 Concurrence d'écriture (C2)
+### 4.2 Write concurrency (C2)
 
-Dans AREA, l'API (clients), les hooks et les workers écrivent en même temps.
+In AREA, the API (clients), the hooks and the workers write at the same time.
 
-SQLite n'autorise qu'un écrivain. Le mode WAL permet aux lecteurs de continuer, mais les écritures se sérialisent :
+SQLite allows only one writer. WAL mode lets readers continue, but writes are serialized:
 
 ```go
 db, _ := sql.Open("sqlite", "file:area.db?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
-db.SetMaxOpenConns(1) // sinon SQLITE_BUSY sous charge
+db.SetMaxOpenConns(1) // otherwise SQLITE_BUSY under load
 ```
 
-Il faut donc brider le pool et faire passer toutes les écritures par une seule file. C'est viable à petite échelle, mais un seul processus peut tenir le fichier proprement, ce qui contraint l'architecture.
+The pool must therefore be capped and every write routed through a single queue. This works at small scale, but only one process can safely hold the file, which constrains the architecture.
 
-PostgreSQL (MVCC) gère les écritures parallèles sans configuration particulière.
+PostgreSQL (MVCC) handles parallel writes without special configuration.
 
-MongoDB verrouille au niveau du document et encaisse aussi les écritures parallèles (7 972 ops/s à 16 goroutines, voir §6).
+MongoDB locks at the document level and also handles parallel writes (7,777 ops/s with 16 goroutines, see §6).
 
-### 4.3 File de jobs, retry et dead letter sans broker (C8)
+### 4.3 Job queue, retry and dead letter without a broker (C8)
 
-Le sujet impose que le retry ne nécessite pas de broker (ENG-RETRY). Avec PostgreSQL, la table elle-même sert de file :
+The subject requires that retry does not need a broker (ENG-RETRY). With PostgreSQL, the table itself serves as the queue:
 
 ```sql
 CREATE TABLE jobs (
@@ -138,15 +137,15 @@ CREATE TABLE jobs (
     status        TEXT        NOT NULL DEFAULT 'pending',  -- pending | running | done | dead
     attempts      INT         NOT NULL DEFAULT 0,
     max_attempts  INT         NOT NULL DEFAULT 5,
-    run_at        TIMESTAMPTZ NOT NULL DEFAULT now(),       -- backoff : repoussé à chaque échec
-    idempotency_key TEXT      NOT NULL UNIQUE,              -- protège l'effet de bord
+    run_at        TIMESTAMPTZ NOT NULL DEFAULT now(),       -- backoff: pushed back on each failure
+    idempotency_key TEXT      NOT NULL UNIQUE,              -- protects the side effect
     last_error    TEXT
 );
 CREATE INDEX jobs_ready ON jobs (run_at) WHERE status = 'pending';
 ```
 
 ```sql
--- Réclamation atomique par plusieurs workers, sans double traitement
+-- Atomic claim by several workers, without double processing
 UPDATE jobs SET status = 'running', attempts = attempts + 1
 WHERE id = (
     SELECT id FROM jobs
@@ -159,7 +158,7 @@ RETURNING *;
 ```
 
 ```sql
--- Échec : backoff exponentiel, ou dead letter si les tentatives sont épuisées
+-- Failure: exponential backoff, or dead letter once attempts are exhausted
 UPDATE jobs SET
     status  = CASE WHEN attempts >= max_attempts THEN 'dead' ELSE 'pending' END,
     run_at  = now() + (interval '2 seconds' * power(2, attempts)),
@@ -167,15 +166,15 @@ UPDATE jobs SET
 WHERE id = $1;
 ```
 
-Les jobs `dead` restent en base : inspectables et rejouables (`UPDATE jobs SET status='pending', attempts=0 …`). Le lien retry / persistance / idempotence demandé par le sujet est ici direct : la clé d'idempotence est une contrainte d'unicité dans la même transaction que l'état du job.
+`dead` jobs stay in the database, so they can be inspected and replayed (`UPDATE jobs SET status='pending', attempts=0 …`). The link between retry, persistence and idempotence that the subject asks about is direct here: the idempotency key is a uniqueness constraint in the same transaction as the job state.
 
-SQLite n'a pas de `SKIP LOCKED`. Avec un seul écrivain, la réclamation est sûre dans un seul processus, mais pas entre plusieurs.
+SQLite has no `SKIP LOCKED`. With a single writer, claiming is safe inside one process, but not across several.
 
-MongoDB réclame les jobs avec `findOneAndUpdate`, qui est atomique, mais l'atomicité entre le job et l'effet de bord demande une transaction, donc un replica set.
+MongoDB claims jobs with `findOneAndUpdate`, which is atomic, but keeping the job and the side effect atomic together requires a transaction, hence a replica set.
 
-### 4.4 Modélisation des workflows (C4)
+### 4.4 Workflow modeling (C4)
 
-Les nodes ont des paramètres hétérogènes. PostgreSQL combine colonnes relationnelles et JSONB :
+Nodes have heterogeneous parameters. PostgreSQL combines relational columns and JSONB:
 
 ```sql
 CREATE TABLE nodes (
@@ -189,23 +188,23 @@ CREATE TABLE nodes (
 CREATE INDEX nodes_params_gin ON nodes USING GIN (params);
 ```
 
-MongoDB est plus naturel pour un document workflow imbriqué, mais l'essentiel des relations d'AREA (utilisateur ↔ services ↔ workflows ↔ runs) est relationnel, avec des jointures et des suppressions en cascade (compte supprimé = données supprimées). SQLite propose du JSON (`json_extract`) mais sans indexation aussi riche.
+MongoDB is more natural for a nested workflow document, but most of AREA's relations (user ↔ services ↔ workflows ↔ runs) are relational, with joins and cascading deletes (deleted account = deleted data). SQLite offers JSON (`json_extract`) but without equally rich indexing.
 
-### 4.5 Sécurité (C5)
+### 4.5 Security (C5)
 
 | Aspect | PostgreSQL | SQLite | MongoDB |
 |---|---|---|---|
-| Authentification / rôles | rôles, `GRANT`, row-level security | aucun (droits fichier OS) | utilisateurs, RBAC |
-| Chiffrement du transport | TLS | sans objet (local) | TLS |
-| Chiffrement au repos | niveau colonne (`pgcrypto`) ou volume | extension payante ou volume | Enterprise ; sinon volume |
-| Requêtes paramétrées | oui (`pgx`) | oui | oui (injection NoSQL via opérateurs `$` si on passe l'entrée brute) |
-| Surface d'attaque | port réseau à isoler | fichier à protéger | port réseau à isoler |
+| Authentication / roles | roles, `GRANT`, row-level security | none (OS file permissions) | users, RBAC |
+| Transport encryption | TLS | not applicable (local) | TLS |
+| Encryption at rest | column level (`pgcrypto`) or volume | paid extension or volume | Enterprise only; otherwise volume |
+| Parameterized queries | yes (`pgx`) | yes | yes (NoSQL injection through `$` operators if raw input is passed) |
+| Attack surface | network port to isolate | file to protect | network port to isolate |
 
-Choix de conception retenu : chiffrement applicatif des tokens OAuth (AES-256-GCM, clé hors dépôt et hors base, fournie par variable d'environnement ou secret Docker). Ainsi un dump de base ne révèle que du chiffré, quel que soit le moteur.
+Design choice: application-level encryption of OAuth tokens (AES-256-GCM, with the key kept outside the repository and the database, supplied through an environment variable or a Docker secret). A database dump then reveals only ciphertext, whichever engine is used.
 
 ```go
 func Encrypt(key, plaintext []byte) ([]byte, error) {
-    block, _ := aes.NewCipher(key) // clé de 32 octets
+    block, _ := aes.NewCipher(key) // 32-byte key
     gcm, _ := cipher.NewGCM(block)
     nonce := make([]byte, gcm.NonceSize())
     if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
@@ -215,9 +214,9 @@ func Encrypt(key, plaintext []byte) ([]byte, error) {
 }
 ```
 
-Ce choix rend le critère C5 moins discriminant entre moteurs ; la différence restante tient aux rôles (PostgreSQL permet un utilisateur applicatif sans droit de `DROP`, de lecture sur `audit`, etc.).
+This choice makes C5 less discriminating between engines. The remaining difference is roles: PostgreSQL allows an application user without `DROP` rights, or with read-only access to an `audit` table.
 
-### 4.6 Exploitation Docker (C6)
+### 4.6 Docker operations (C6)
 
 ```yaml
 services:
@@ -232,7 +231,7 @@ services:
       interval: 5s
   backup:
     image: postgres:17
-    # pg_dump horodaté vers un volume distinct du conteneur de la base
+    # timestamped pg_dump to a volume separate from the database container
     command: >
       sh -c 'while true; do
         pg_dump -h db -U area area | gzip > /backups/area-$$(date +%F_%H%M).sql.gz;
@@ -244,93 +243,93 @@ volumes:
   backups:
 ```
 
-- Health endpoint : un `pool.Ping(ctx)` côté Go suffit à signaler la base arrêtée.
-- Backups : `pg_dump` en conteneur dédié. Avec SQLite, il faudrait copier un fichier utilisé par l'application (`.backup` / `VACUUM INTO`) depuis un autre conteneur, donc partager le volume. MongoDB passe par `mongodump`.
-- Persistance Docker : les trois moteurs exigent un volume nommé, sinon un conteneur recréé perd les données.
+- Health endpoint: a `pool.Ping(ctx)` call on the Go side is enough to report a stopped database.
+- Backups: `pg_dump` in a dedicated container. With SQLite, a file in use by the application would have to be copied (`.backup` / `VACUUM INTO`) from another container, which means sharing the volume. MongoDB uses `mongodump`.
+- Docker persistence: all three engines need a named volume, otherwise a recreated container loses its data.
 
-## 5. Choix proposé
+## 5. Proposed choice
 
-PostgreSQL, accédé via `pgx`.
+PostgreSQL, accessed through `pgx`.
 
-Raisons spécifiques à AREA :
-1. Les hooks, workers et l'API écrivent en parallèle : MVCC sans contournement (C2).
-2. L'idempotence et la file de retry reposent sur des contraintes d'unicité et `SKIP LOCKED` dans la même transaction que l'état métier, sans broker (C3, C8).
-3. Le modèle est majoritairement relationnel, et le JSONB couvre la variabilité des nodes (C4).
-4. Un serveur séparé s'intègre naturellement aux backups, au health check et à la décomposition en conteneurs (C6).
+Reasons specific to AREA:
+1. Hooks, workers and the API write in parallel: MVCC works without workarounds (C2).
+2. Idempotence and the retry queue rely on uniqueness constraints and `SKIP LOCKED` in the same transaction as the business state, with no broker (C3, C8).
+3. The model is mostly relational, and JSONB covers the variability of nodes (C4).
+4. A separate server fits naturally with backups, health checks and the container breakdown (C6).
 
-### Alternatives rejetées, pour ce projet
+### Alternatives rejected, for this project
 
-- SQLite : rejeté à cause de l'écriture mono-écrivain face à des hooks, workers et API concurrents, et du partage d'un fichier entre conteneurs. Il est durable et ACID, et reste pertinent pour les tests unitaires.
-- MongoDB : rejeté car le modèle est surtout relationnel, que les transactions multi-documents exigent un replica set (complexité d'exploitation pour peu de gain), et que la licence SSPL et le chiffrement au repos natif (Enterprise) sont moins favorables.
+- SQLite: rejected because of its single-writer model against concurrent hooks, workers and API, and because a file would have to be shared between containers. It is durable and ACID, and stays relevant for unit tests.
+- MongoDB: rejected because the model is mostly relational, because multi-document transactions require a replica set (operational complexity for little gain), and because the SSPL license and the Enterprise-only native encryption at rest are less favorable.
 
-### Conséquences acceptées
+### Accepted consequences
 
-- Un conteneur serveur de plus à configurer, sécuriser et sauvegarder.
-- Une file de jobs en base : adaptée à notre volume, à réévaluer si le débit explose (voir ENG-ASYNC).
-- Migrations de schéma à gérer (prévoir `golang-migrate` ou `goose`).
+- One more server container to configure, secure and back up.
+- A job queue stored in the database: fine for our volume, to be reassessed if throughput grows a lot (see ENG-ASYNC).
+- Schema migrations to manage (plan on `golang-migrate` or `goose`).
 
-### Conditions de révision
+### Conditions for review
 
-Revoir ce choix si l'évaluation montre que le JSONB ne suffit pas pour les workflows, ou si une charge réelle dépasse ce que la base supporte en file de jobs.
+Revisit this choice if the evaluation shows that JSONB is not enough for workflows, or if a real load exceeds what the database can handle as a job queue.
 
-## 6. Preuve pratique (POC)
+## 6. Practical evidence (POC)
 
-Le POC est dans `bench/persistence/` (Go et Docker Compose). Il exécute les mêmes scénarios sur les trois moteurs, derrière une interface `Store` commune.
+The POC lives in `bench/persistence/` (Go and Docker Compose). It runs the same scenarios on the three engines, behind a common `Store` interface.
 
 ```
 nix develop                        # Go, psql, sqlite3
 cd bench/persistence
-docker compose up -d --wait        # postgres:17 et mongo:8
-go run . bench                     # scénarios 1 à 3
-./crash.sh                         # scénario 4
+docker compose up -d --wait        # postgres:17 and mongo:8
+go run . bench                     # scenarios 1 to 3
+./crash.sh                         # scenario 4
 ```
 
-Scénarios :
-1. Déduplication : 5 000 identifiants distincts soumis chacun deux fois (10 000 appels, mélangés), 16 goroutines. Attendu : exactement 5 000 lignes.
-2. Écritures concurrentes : 1, 4 et 16 goroutines insèrent des runs pendant 5 s. On mesure le débit et les erreurs.
-3. Réclamation de jobs : 10 000 jobs, 4 workers qui réclament puis terminent. Attendu : aucun job traité deux fois.
-4. Crash : 8 goroutines écrivent en continu et n'enregistrent un identifiant qu'une fois l'écriture acquittée. On tue le moteur (`docker kill`, SIGKILL), on le redémarre, puis on vérifie que chaque écriture acquittée existe.
+Scenarios:
+1. Deduplication: 5,000 distinct identifiers, each submitted twice (10,000 calls, shuffled), 16 goroutines. Expected: exactly 5,000 rows.
+2. Concurrent writes: 1, 4 and 16 goroutines insert runs for 5 s. Throughput and errors are measured.
+3. Job claiming: 10,000 jobs, 4 workers that claim then finish them. Expected: no job processed twice.
+4. Crash: 8 goroutines write continuously and record an identifier only once the write is acknowledged. The engine is killed (`docker kill`, SIGKILL), restarted, and every acknowledged write is then checked for existence.
 
-Variantes testées : `sqlite` (WAL, `synchronous=FULL`, pool de 1 connexion), `sqlite-pool` (même réglage, pool de 16 connexions, donc sans précaution), `mongo` (`j:true`, écriture acquittée après flush du journal) et `mongo-w1` (write concern par défaut).
+Variants tested: `sqlite` (WAL, `synchronous=FULL`, pool of 1 connection), `sqlite-pool` (same settings, pool of 16 connections, so without precautions), `mongo` (`j:true`, write acknowledged after the journal flush) and `mongo-w1` (default write concern).
 
-### Résultats mesurés (2026-11-24, moyenne de 5 exécutions)
+### Measured results (2026-11-24, average of 5 runs)
 
-Les valeurs entre parenthèses donnent le minimum et le maximum observés quand l'écart est notable.
+Values in parentheses give the minimum and maximum observed when the spread is notable.
 
-| Scénario | PostgreSQL | SQLite (pool 1) | SQLite (pool 16) | MongoDB (`j:true`) |
+| Scenario | PostgreSQL | SQLite (pool 1) | SQLite (pool 16) | MongoDB (`j:true`) |
 |---|---|---|---|---|
-| Lignes après déduplication (attendu 5 000) | 5 000 | 5 000 | 5 000 | 5 000 |
-| Erreurs pendant la déduplication | 0 | 0 | 14 (`SQLITE_BUSY`) | 0 |
-| Durée de la déduplication | 0,67 s | 11,7 s | 12,1 s | 1,5 s |
-| Débit écriture, 1 goroutine (ops/s) | 870 (71 à 1 238) | 858 (832 à 878) | 789 (452 à 878) | 477 (95 à 791) |
-| Débit écriture, 4 goroutines (ops/s) | 2 241 (1 153 à 2 521) | 870 | 753 (291 à 877) | 2 400 |
-| Débit écriture, 16 goroutines (ops/s) | 9 929 (9 851 à 9 964) | 866 | 709 (74 à 881) | 7 777 (7 421 à 7 983) |
-| Erreurs d'écriture (16 goroutines) | 0 | 0 | 6 (`SQLITE_BUSY`) | 0 |
-| Jobs traités en double (attendu 0) | 0 | 0 | 0 | 0 |
-| Jobs terminés en base (attendu 10 000) | 10 000 | 10 000 | 9 998 (9 996 à 10 000) | 10 000 |
-| Durée du traitement des 10 000 jobs | 18,2 s (12,9 à 23,2) | 23,9 s | 26,8 s (23,9 à 37,0) | 8,3 s |
+| Rows after deduplication (expected 5,000) | 5,000 | 5,000 | 5,000 | 5,000 |
+| Errors during deduplication | 0 | 0 | 14 (`SQLITE_BUSY`) | 0 |
+| Deduplication duration | 0.67 s | 11.7 s | 12.1 s | 1.5 s |
+| Write throughput, 1 goroutine (ops/s) | 870 (71 to 1,238) | 858 (832 to 878) | 789 (452 to 878) | 477 (95 to 791) |
+| Write throughput, 4 goroutines (ops/s) | 2,241 (1,153 to 2,521) | 870 | 753 (291 to 877) | 2,400 |
+| Write throughput, 16 goroutines (ops/s) | 9,929 (9,851 to 9,964) | 866 | 709 (74 to 881) | 7,777 (7,421 to 7,983) |
+| Write errors (16 goroutines) | 0 | 0 | 6 (`SQLITE_BUSY`) | 0 |
+| Jobs processed twice (expected 0) | 0 | 0 | 0 | 0 |
+| Jobs done in the database (expected 10,000) | 10,000 | 10,000 | 9,998 (9,996 to 10,000) | 10,000 |
+| Time to process the 10,000 jobs | 18.2 s (12.9 to 23.2) | 23.9 s | 26.8 s (23.9 to 37.0) | 8.3 s |
 
-| Crash (`kill` en pleine écriture, moyenne de 5 exécutions) | Écritures acquittées | Perdues |
+| Crash (`kill` during writes, average of 5 runs) | Acknowledged writes | Lost |
 |---|---|---|
-| PostgreSQL | 19 404 | 0 sur les 5 exécutions |
-| SQLite (`synchronous=FULL`) | 3 289 | 0 sur les 5 exécutions |
-| MongoDB `j:true` | 17 005 | 0 sur les 5 exécutions |
-| MongoDB `w:1` (défaut) | 85 584 | 123 en moyenne (22 à 266) |
+| PostgreSQL | 19,404 | 0 in all 5 runs |
+| SQLite (`synchronous=FULL`) | 3,289 | 0 in all 5 runs |
+| MongoDB `j:true` | 17,005 | 0 in all 5 runs |
+| MongoDB `w:1` (default) | 85,584 | 123 on average (22 to 266) |
 
-### Lecture des résultats
+### Reading the results
 
-- Concurrence : le débit de SQLite reste autour de 860 ops/s quel que soit le nombre de goroutines, puisqu'il n'a qu'un écrivain à la fois. PostgreSQL passe de 870 à 9 929 ops/s entre 1 et 16 goroutines (le groupement des fsync profite du parallélisme). MongoDB suit la même tendance, un peu en dessous (477 à 7 777 ops/s).
-- Pool SQLite naïf : avec 16 connexions, on obtient des erreurs `SQLITE_BUSY` malgré `busy_timeout=5000`, et quelques jobs restent bloqués à l'état `running` (9 998 terminés sur 10 000 en moyenne) parce que l'écriture de fin de job a échoué. Le débit devient aussi instable (74 ops/s dans le pire cas à 16 goroutines). Il faut donc brider le pool à 1 connexion et gérer les erreurs.
-- À une seule goroutine, SQLite et PostgreSQL sont au même niveau en moyenne (858 contre 870 ops/s), mais PostgreSQL est très irrégulier (71 à 1 238 ops/s) alors que SQLite varie peu (832 à 878). Cela ne remet pas en cause le choix, car AREA a plusieurs écrivains concurrents.
-- Idempotence : les trois moteurs gardent 5 000 lignes grâce à la contrainte d'unicité. Ce critère ne les départage pas.
-- Jobs sans doublon : aucun doublon dans les trois cas, y compris sans `SKIP LOCKED` pour SQLite (grâce à l'`UPDATE … RETURNING` atomique, tant qu'il y a une seule instance de l'application).
-- Durabilité MongoDB : avec le write concern par défaut, 123 écritures acquittées en moyenne (22 à 266 selon l'exécution) ont été perdues après un kill. Il faut configurer `j:true`, ce qui réduit le débit. PostgreSQL est durable sans réglage.
-- Jobs MongoDB plus rapides (8,3 s contre 18,2 s) : la réclamation est une seule opération (`findOneAndUpdate`), alors que PostgreSQL attend deux fsync (réclamation, puis fin du job). Ce point joue en faveur de MongoDB. Il pèse peu face aux autres critères, mais il faudra le reconnaître en soutenance.
+- Concurrency: SQLite stays around 860 ops/s whatever the number of goroutines, since it has only one writer at a time. PostgreSQL goes from 870 to 9,929 ops/s between 1 and 16 goroutines (grouped fsyncs benefit from parallelism). MongoDB follows the same trend, a bit lower (477 to 7,777 ops/s).
+- Naive SQLite pool: with 16 connections, `SQLITE_BUSY` errors appear despite `busy_timeout=5000`, and a few jobs stay stuck in the `running` state (9,998 of 10,000 done on average) because the write that finishes the job failed. Throughput also becomes unstable (74 ops/s in the worst case with 16 goroutines). The pool must therefore be capped at 1 connection and errors handled.
+- With a single goroutine, SQLite and PostgreSQL are on par on average (858 against 870 ops/s), but PostgreSQL is very irregular (71 to 1,238 ops/s) while SQLite varies little (832 to 878). This does not change the choice, because AREA has several concurrent writers.
+- Idempotence: all three engines keep 5,000 rows thanks to the uniqueness constraint. This criterion does not separate them.
+- No duplicate jobs: none in any case, including SQLite without `SKIP LOCKED` (thanks to the atomic `UPDATE … RETURNING`, as long as there is a single application instance).
+- MongoDB durability: with the default write concern, 123 acknowledged writes on average (22 to 266 depending on the run) were lost after a kill. `j:true` must be configured, which lowers throughput. PostgreSQL is durable without tuning.
+- MongoDB is faster on jobs (8.3 s against 18.2 s): claiming is a single operation (`findOneAndUpdate`), whereas PostgreSQL waits for two fsyncs (claim, then job completion). This point favors MongoDB. It weighs little against the other criteria, but it will have to be acknowledged during the defense.
 
-### Limites du protocole
+### Limits of the protocol
 
-- Machine unique, 5 exécutions : les moyennes donnent les ordres de grandeur. Les débits à 1 et 4 goroutines varient beaucoup d'une exécution à l'autre (fsync du disque, activité de la machine) et ne servent pas à départager les moteurs ; ceux à 16 goroutines sont stables.
-- Réseau local : les conteneurs tournent sur `localhost`, donc la latence réseau des moteurs serveurs est sous-estimée par rapport à un déploiement réel.
-- `docker kill` simule un crash du processus, pas une coupure de courant : le cache disque de l'OS survit. Le test vérifie la journalisation, pas la tenue du matériel.
-- Schéma minimal : une ligne par run, sans les entrées/sorties complètes de chaque node.
-- Versions : PostgreSQL 17, MongoDB 8, SQLite via `modernc.org/sqlite` v1.63.0 (pur Go), Go 1.27.3, `pgx` v5, `mongo-driver` v2.
+- Single machine, 5 runs: the averages give orders of magnitude. Throughput with 1 and 4 goroutines varies a lot from run to run (disk fsync, machine activity) and does not separate the engines; throughput with 16 goroutines is stable.
+- Local network: the containers run on `localhost`, so the network latency of server engines is underestimated compared with a real deployment.
+- `docker kill` simulates a process crash, not a power cut: the OS disk cache survives. The test checks journaling, not hardware resilience.
+- Minimal schema: one row per run, without the full inputs/outputs of each node.
+- Versions: PostgreSQL 17, MongoDB 8, SQLite through `modernc.org/sqlite` v1.63.0 (pure Go), Go 1.27.3, `pgx` v5, `mongo-driver` v2.
