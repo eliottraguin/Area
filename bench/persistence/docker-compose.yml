@@ -1,0 +1,23 @@
+# Moteurs candidats pour le POC de persistance (voir docs/technical_choices/persistence_choice.md).
+# Réglages par défaut volontairement conservés (fsync actif pour PostgreSQL).
+services:
+  postgres:
+    image: postgres:17
+    container_name: bench-postgres
+    environment:
+      POSTGRES_USER: area
+      POSTGRES_PASSWORD: area
+      POSTGRES_DB: area
+    ports: ["55432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U area"]
+      interval: 2s
+      retries: 30
+  mongo:
+    image: mongo:8
+    container_name: bench-mongo
+    ports: ["57017:27017"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping:1}).ok"]
+      interval: 2s
+      retries: 30
