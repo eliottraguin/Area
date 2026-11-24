@@ -1,25 +1,25 @@
-# Spike TypeScript — Bootstrap AREA
+# TypeScript Spike for the AREA Bootstrap
 
-**Timebox prévue** — 25 minutes, comme pour les deux autres essais. Une route HTTP minimale suffit pour comparer la prise en main, le démarrage du serveur et la configuration du port.
+**Timebox** — 25 minutes, the same as for the other two spikes. A minimal HTTP route is enough to compare the initial learning curve, server startup, and port configuration.
 
-## Résultat
+## Result
 
-J’ai atteint la cible du spike TypeScript en **5 minutes**.
+I reached the TypeScript spike target in **5 minutes**.
 
-- J’ai créé un serveur HTTP avec Express et ajouté des types `Request` et `Response` aux handlers.
-- Le serveur lit `process.env.PORT`. La valeur par défaut est `3000`, donc je le lance avec `PORT=8080` pour l’exercice.
-- `GET /ping` renvoie exactement `{"status":"ok"}`, sans saut de ligne. La route `GET /` affiche `Hello, World!`.
+- I created an HTTP server with Express and added `Request` and `Response` types to the handlers.
+- The server reads `process.env.PORT` and defaults to `3000`, so I start it with `PORT=8080` for the exercise.
+- `GET /ping` returns exactly `{"status":"ok"}`, with no trailing newline. `GET /` displays `Hello, World!`.
 
-## Prise en main
+## Getting Started
 
-Je connaissais déjà TypeScript, donc la prise en main a été rapide. L’étape qui m’a pris le plus de temps a été de me remettre en tête ce que je connaissais déjà du langage.
+I already knew TypeScript, so getting started was quick. Refreshing my knowledge of the language took the most time.
 
-## Pour aller plus loin
+## Next Steps
 
-J’ajouterais une commande de lancement dans `package.json` et un test HTTP automatisé pour vérifier le statut et le corps exact de `/ping`.
+I would add a start command to `package.json` and an automated HTTP test to check the status and exact response body of `/ping`.
 
-## Reproduire
+## Reproduce the Spike
 
-Depuis `docs/spikes/Typescript`, installer les dépendances avec `npm ci`, puis lancer `PORT=8080 node main.ts` avec Node.js 24. Dans un second terminal, exécuter `curl http://localhost:8080/ping`.
+From `docs/spikes/Typescript`, install the dependencies with `npm ci`, then run `PORT=8080 node main.ts` with Node.js 24. In a second terminal, run `curl http://localhost:8080/ping`.
 
-Un essai HTTP sur un autre port libre a confirmé que le serveur utilise `PORT` et que le corps de `/ping` correspond exactement au résultat attendu.
+An HTTP check on another available port confirmed that the server uses `PORT` and that the `/ping` response body matches the expected result exactly.

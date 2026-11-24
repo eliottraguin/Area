@@ -1,26 +1,26 @@
-# Spike Go — Bootstrap AREA
+# Go Spike for the AREA Bootstrap
 
-**Timebox prévue** — 25 minutes, comme pour Rust et TypeScript. Une seule route HTTP suffit pour comparer la prise en main et les étapes nécessaires pour lancer chaque serveur.
+**Timebox** — 25 minutes, the same as for Rust and TypeScript. A single HTTP route is enough to compare the initial learning curve and the steps needed to start each server.
 
-## Résultat
+## Result
 
-J’ai atteint la cible du spike Go en **12 minutes**.
+I reached the Go spike target in **12 minutes**.
 
-- J’ai créé un serveur HTTP en Go avec `net/http`, la bibliothèque standard.
-- Le serveur lit le port avec `os.Getenv("PORT")`. Je peux le lancer sur le port demandé avec `PORT=8080 go run .`.
-- `GET /ping` renvoie exactement `{"status":"ok"}`, sans saut de ligne.
-- J’ai aussi ajouté `/hello`, qui affiche le chemin demandé, et une page d’accueil blanche avec le titre « Mon projet AREA ».
+- I created an HTTP server in Go using `net/http` from the standard library.
+- The server reads the port with `os.Getenv("PORT")`. I can start it on the required port with `PORT=8080 go run .`.
+- `GET /ping` returns exactly `{"status":"ok"}`, with no trailing newline.
+- During the spike, I also added `/hello`, which displays the requested path, and a white homepage titled “Mon projet AREA”.
 
-## Difficultés rencontrées
+## Challenges
 
-La recherche dans la documentation Go est l’étape qui m’a pris le plus de temps.
+Looking up how to proceed in the Go documentation took the most time.
 
-J’ai ajusté le format de la réponse de `/ping` pour respecter le JSON exact. J’ai aussi identifié le `%` affiché par zsh quand la réponse se termine sans saut de ligne.
+I adjusted the `/ping` response format to match the exact JSON. I also identified why zsh displays a `%` when the response ends without a newline.
 
-## Pour aller plus loin
+## Next Steps
 
-Je limiterais `/ping` à la méthode `GET` et j’ajouterais un test qui vérifie le code HTTP et le corps exact. À ce stade, `go test ./...` compile le programme, mais aucun test automatisé n’est présent.
+I would restrict `/ping` to the `GET` method and add a test that checks the HTTP status code and exact response body. At this stage, `go test ./...` compiles the program, and adding automated tests is still an open task.
 
-## Reproduire
+## Reproduce the Spike
 
-Depuis `bootstrap/Go`, lancer `PORT=8080 go run .`, puis exécuter `curl -w '\n' http://localhost:8080/ping` dans un second terminal. L’option `-w` ajoute un saut de ligne à l’affichage.
+From `docs/spikes/Go`, run `PORT=8080 go run .`, then run `curl -w '\n' http://localhost:8080/ping` in a second terminal. The `-w` option adds a newline to the terminal output.

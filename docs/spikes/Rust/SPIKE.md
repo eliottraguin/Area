@@ -1,25 +1,25 @@
-# Spike Rust — Bootstrap AREA
+# Rust Spike for the AREA Bootstrap
 
-**Timebox prévue** — 25 minutes, comme pour les deux autres essais. Une route HTTP minimale suffit pour comparer la prise en main, le démarrage du serveur et la configuration du port.
+**Timebox** — 25 minutes, the same as for the other two spikes. A minimal HTTP route is enough to compare the initial learning curve, server startup, and port configuration.
 
-## Résultat
+## Result
 
-J’ai atteint la cible du spike Rust en **20 minutes**.
+I reached the Rust spike target in **20 minutes**.
 
-- J’ai mis en place un serveur HTTP avec Axum pour le routage et Tokio pour l’exécution asynchrone.
-- Le serveur lit `PORT` avec `std::env::var`. La valeur par défaut est `8080`.
-- `GET /ping` renvoie exactement `{"status":"ok"}`, sans saut de ligne. J’ai aussi ajouté une route `GET /hello`.
+- I set up an HTTP server with Axum for routing and Tokio for asynchronous execution.
+- The server reads `PORT` with `std::env::var` and defaults to `8080`.
+- `GET /ping` returns exactly `{"status":"ok"}`, with no trailing newline. I also added a `GET /hello` route.
 
-## Difficultés rencontrées
+## Challenges
 
-L’étape qui m’a pris le plus de temps a été de comprendre comment faire et de trouver la démarche pour mettre en place le serveur en Rust.
+Figuring out how to set up the server in Rust took the most time.
 
-## Pour aller plus loin
+## Next Steps
 
-J’ajouterais un test HTTP automatisé pour vérifier le statut et le corps exact de `/ping`, puis je testerais un appel à une API externe depuis un handler asynchrone.
+I would add an automated HTTP test to check the status and exact response body of `/ping`, then test a call to an external API from an asynchronous handler.
 
-## Reproduire
+## Reproduce the Spike
 
-Depuis `bootstrap/Rust`, lancer `PORT=8080 cargo run --locked`, puis exécuter `curl http://localhost:8080/ping` dans un second terminal.
+From `docs/spikes/Rust`, run `PORT=8080 cargo run --locked`, then run `curl http://localhost:8080/ping` in a second terminal.
 
-Le prototype a été compilé avec `cargo build --locked --offline`. Un essai HTTP sur un autre port libre a confirmé que le serveur utilise `PORT` et que le corps de `/ping` correspond exactement au résultat attendu.
+The prototype was built with `cargo build --locked --offline`. An HTTP check on another available port confirmed that the server uses `PORT` and that the `/ping` response body matches the expected result exactly.

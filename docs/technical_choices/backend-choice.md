@@ -1,46 +1,46 @@
-# Choix de Go pour le backend AREA
+# Choosing Go for the AREA Backend
 
-Nous sommes un groupe de quatre. Notre backend doit fournir une API commune aux clients web et Android, détecter des événements même quand les clients sont fermés et exécuter les workflows associés. Le sujet nous demande au moins cinq services et dix Actions et REActions au total. Au moins la moitié des services doivent demander une autorisation OAuth2. Voir le sujet AREA, sections « Hooks », « Clients & Server » et « Deliverables and expectations ».
+We are a team of four. Our backend must provide a shared API for the web and Android clients, detect events even when the clients are closed, and run the associated workflows. The brief requires at least five services and ten Actions and REActions combined. At least half of the services must require OAuth2 authorization. See the AREA brief, sections “Hooks”, “Clients & Server”, and “Deliverables and expectations”.
 
-## Comparaison des prototypes
+## Prototype Comparison
 
-Nous avons comparé Go, Rust et TypeScript à partir de trois essais limités à 25 minutes chacun. Nous avons utilisé la même cible pour les trois. Le serveur devait lire son port depuis `PORT`, pouvoir écouter sur `8080` et renvoyer exactement `{"status":"ok"}` sur `GET /ping`.
+We compared Go, Rust, and TypeScript in three spikes limited to 25 minutes each. We used the same target for all three. The server had to read its port from `PORT`, be able to listen on `8080`, and return exactly `{"status":"ok"}` for `GET /ping`.
 
-| Technologie | Dépendances HTTP du prototype | Premier succès | Étape la plus longue de l’essai |
+| Technology | Prototype HTTP dependencies | Time to first success | Most time-consuming step |
 | --- | --- | --- | --- |
-| Go | `net/http`, fourni par la bibliothèque standard | 12 min | Chercher dans la documentation Go. |
-| Rust | Axum et Tokio | 20 min | Comprendre comment mettre en place le serveur et trouver la démarche. |
-| TypeScript | Express sur Node.js | 5 min | Se remémorer les connaissances déjà acquises dans le langage. |
+| Go | `net/http` from the standard library | 12 min | Looking up how to proceed in the Go documentation. |
+| Rust | Axum and Tokio | 20 min | Figuring out how to set up the server. |
+| TypeScript | Express on Node.js | 5 min | Refreshing our knowledge of the language. |
 
-Les trois prototypes ont atteint la cible. Les temps mesurent la mise en place de cette route et le réglage du port pendant le spike. TypeScript était déjà familier à toute l’équipe, ce qui rendait ce choix plus prévisible pour démarrer. [Comparaison des essais](spikes/DISTANCE.md) · [Code Go](spikes/Go/server.go) · [Code Rust](spikes/Rust/src/main.rs) · [Code TypeScript](spikes/Typescript/main.ts)
+All three prototypes reached the target. The times cover setting up the route and configuring the port during each spike. Everyone on the team already knew TypeScript, which made it more predictable to get started with. [Spike comparison](../spikes/DISTANCE.md) · [Go code](../spikes/Go/server.go) · [Rust code](../spikes/Rust/src/main.rs) · [TypeScript code](../spikes/Typescript/main.ts)
 
-### Reproduire le prototype Go
+### Reproduce the Go Prototype
 
-Depuis la racine du dépôt, lancer le serveur sur un port `8080` libre.
+From the repository root, start the server with port `8080` available.
 
 ```sh
 cd docs/spikes/Go
 PORT=8080 go run .
 ```
 
-Dans un second terminal, `curl -fsS http://localhost:8080/ping` doit renvoyer `{"status":"ok"}`.
+In a second terminal, `curl -fsS http://localhost:8080/ping` should return `{"status":"ok"}`.
 
-## Pourquoi Go convient au projet AREA
+## Why Go Fits AREA
 
-- **Une API commune aux deux clients.** Nous pouvons construire les routes avec `net/http`, y compris celle qui expose le catalogue des Services, Actions et REActions. Avec `httptest`, nous pouvons envoyer des requêtes aux handlers et vérifier leurs réponses. Ces outils nous donnent une base pour écrire le test demandé par le sujet, qui doit échouer si l’implémentation s’écarte du contrat OpenAPI, y compris sur les réponses d’erreur. [net/http](https://pkg.go.dev/net/http) · [httptest](https://pkg.go.dev/net/http/httptest)
-- **Des hooks autonomes.** Nous pouvons utiliser des goroutines pour faire tourner la détection des événements en parallèle du serveur HTTP et `context` pour arrêter proprement ces tâches. L’ordre des réactions reste géré par le moteur à l’intérieur de chaque workflow. Nous devons aussi définir comment identifier et mémoriser les événements déjà traités, comme le demande le sujet. [Goroutines](https://go.dev/doc/effective_go#goroutines) · [context](https://pkg.go.dev/context)
-- **Des appels aux services tiers.** Le client de `net/http` permet de fixer des délais pour nos appels sortants. Si le service appelé par une réaction tarde à répondre, nous pouvons faire remonter l’échec au moteur. Cette brique peut être partagée entre plusieurs intégrations, même si chaque service conserve ses propres paramètres et autorisations. [Client HTTP de Go](https://pkg.go.dev/net/http#Client)
-- **Un modèle explicite pour les workflows.** Les structures Go nous permettent de représenter les déclencheurs, les réactions et les conditions avec des données typées. Nous pouvons écrire des validations pour appliquer les règles du sujet au moment où un workflow est enregistré, par exemple vérifier qu’il comporte au plus une condition et que chaque référence vise une donnée déclarée par un nœud précédent.
-- **Un backend à intégrer dans Docker Compose.** `go build` produit un exécutable pour le serveur. Nous pouvons compiler cet exécutable dans une étape de construction du conteneur, puis le lancer depuis l’image finale. C’est une base pour la construction reproductible demandée par le sujet. [Commande go build](https://pkg.go.dev/cmd/go#hdr-Compile_packages_and_dependencies)
+- **A shared API for both clients.** We can build routes with `net/http`, including the route that exposes the catalogue of Services, Actions, and REActions. With `httptest`, we can send requests to handlers and check their responses. These tools give us a starting point for the test required by the brief, which must fail if the implementation departs from the OpenAPI contract, including its error responses. [net/http](https://pkg.go.dev/net/http) · [httptest](https://pkg.go.dev/net/http/httptest)
+- **Autonomous hooks.** We can use goroutines to detect events alongside the HTTP server and `context` to shut down those tasks cleanly. The engine controls the order of reactions within each workflow. We also need to decide how to identify and track events we have already processed, as the brief requires. [Goroutines](https://go.dev/doc/effective_go#goroutines) · [context](https://pkg.go.dev/context)
+- **Calls to third-party services.** The `net/http` client lets us set timeouts for outbound requests. If a service called by a reaction takes too long to respond, we can report the failure to the engine. We can share this component across integrations while keeping each service’s settings and permissions separate. [Go HTTP client](https://pkg.go.dev/net/http#Client)
+- **An explicit workflow model.** Go structs let us represent triggers, reactions, and conditions with typed data. We can validate the rules from the brief when saving a workflow. For example, we can check that it has at most one condition and that every reference points to data declared by an earlier node.
+- **A backend we can integrate with Docker Compose.** `go build` produces a server executable. We can compile it in a container build stage and run it from the final image. This gives us a starting point for the reproducible build required by the brief. [go build command](https://pkg.go.dev/cmd/go#hdr-Compile_packages_and_dependencies)
 
-## Sécurité et dépendances
+## Security and Dependencies
 
-Pour cette route, Go utilise uniquement la bibliothèque standard, alors que les deux autres prototypes ajoutent des dépendances HTTP externes. La sécurité OAuth2 dépendra, pour les trois options, de la bibliothèque choisie, de sa maintenance et de son utilisation. Nous prévoyons l’intégration OAuth2 pour les services tiers demandés par le sujet. Le choix de la bibliothèque reste à faire.
+The Go prototype uses only the standard library for this route. The Rust and TypeScript prototypes use external HTTP dependencies. For all three options, OAuth2 security depends on the library we choose, how it is maintained, and how we use it. We plan to integrate OAuth2 for the third-party services required by the brief. The library choice is still open.
 
-Pour AREA, les vérifications à prévoir concernent notamment la validation du retour OAuth2, la limitation des permissions demandées et la protection des jetons que le serveur conserve pour les hooks. Un premier essai possible serait de connecter un vrai service, puis de vérifier qu’un retour OAuth2 invalide ne permet pas de connecter le compte. Le spike actuel couvre le démarrage du serveur et le comportement de `/ping`. [Recommandations OAuth 2.0](https://www.rfc-editor.org/rfc/rfc9700.html)
+For AREA, we need to verify OAuth2 callback validation, limit the permissions we request, and protect the tokens the server stores for hooks. A first experiment could connect a real service and check that the backend rejects an invalid OAuth2 callback. The current spike covers server startup and the behavior of `/ping`. [OAuth 2.0 security recommendations](https://www.rfc-editor.org/rfc/rfc9700.html)
 
-## Décision
+## Decision
 
-Nous avons choisi **Go** parce que nous voulions découvrir une nouvelle technologie en groupe. Nous avions tous déjà fait du TypeScript, qui nous aurait permis d’avancer plus vite au départ. Rust offrait l’occasion d’explorer ses possibilités d’optimisation, et son essai a demandé plus de temps pour comprendre comment mettre en place le serveur.
+We chose **Go** because we wanted to learn a new technology as a team. We had all used TypeScript before, so it would have let us move faster at the start. Rust offered an opportunity to explore its optimization options, and we spent more time figuring out how to set up its server.
 
-Pour nous, Go représente un entre-deux. Son apprentissage nous permet de découvrir une nouvelle technologie, et la première route a fonctionné en 12 minutes avec la bibliothèque standard. Nous acceptons que la prise en main demande plus de temps qu’avec TypeScript.
+For us, Go is the middle ground. It gives us a new technology to learn, and we got the first route working in 12 minutes with the standard library. We accept that getting up to speed will take longer than with TypeScript.
