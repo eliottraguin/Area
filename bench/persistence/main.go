@@ -1,8 +1,8 @@
-// POC de persistance : mêmes scénarios sur PostgreSQL, SQLite et MongoDB.
+// Persistence POC: the same scenarios on PostgreSQL, SQLite and MongoDB.
 //
-//	go run . bench [store ...]              scénarios 1 à 3
-//	go run . crash-writer <store> <ackfile> écrit jusqu'à être tué
-//	go run . crash-verify <store> <ackfile> vérifie que chaque écriture acquittée existe
+//	go run . bench [store ...]              scenarios 1 to 3
+//	go run . crash-writer <store> <ackfile> writes until killed
+//	go run . crash-verify <store> <ackfile> checks that every acknowledged write exists
 package main
 
 import (
@@ -23,16 +23,16 @@ func open(ctx context.Context, name string) (Store, error) {
 	switch name {
 	case "postgres":
 		return newPG(ctx, "postgres://area:area@localhost:55432/area")
-	case "sqlite": // pool de 1 connexion : configuration réglée
+	case "sqlite": // pool of 1 connection: tuned setup
 		return newSQLite(db, name, 1)
-	case "sqlite-pool": // pool de 16 connexions : configuration naïve
+	case "sqlite-pool": // pool of 16 connections: naive setup
 		return newSQLite(db, name, 16)
 	case "mongo": // j:true
 		return newMongo(ctx, "mongodb://localhost:57017", name, true)
-	case "mongo-w1": // write concern par défaut
+	case "mongo-w1": // default write concern
 		return newMongo(ctx, "mongodb://localhost:57017", name, false)
 	}
-	return nil, fmt.Errorf("moteur inconnu : %s", name)
+	return nil, fmt.Errorf("unknown engine: %s", name)
 }
 
 func main() {
@@ -50,7 +50,7 @@ func main() {
 		for _, n := range stores {
 			s, err := open(ctx, n)
 			if err != nil {
-				fmt.Printf("## %s : connexion impossible : %v\n", n, err)
+				fmt.Printf("## %s: cannot connect: %v\n", n, err)
 				continue
 			}
 			runBench(ctx, s)
@@ -73,7 +73,7 @@ func parallel(n int, fn func()) {
 	wg.Wait()
 }
 
-// errTally compte les erreurs et garde la première.
+// errTally counts errors and keeps the first one.
 type errTally struct {
 	n     atomic.Int64
 	first atomic.Value
@@ -103,7 +103,7 @@ func runBench(ctx context.Context, s Store) {
 	scenarioJobs(ctx, s)
 }
 
-// 1. Déduplication : 5 000 identifiants distincts soumis chacun deux fois, 16 goroutines.
+// 1. Deduplication: 5,000 distinct identifiers, each submitted twice, 16 goroutines.
 func scenarioDedup(ctx context.Context, s Store) {
 	const distinct = 5000
 	ids := make([]string, 0, 2*distinct)
@@ -125,11 +125,11 @@ func scenarioDedup(ctx context.Context, s Store) {
 		}
 	})
 	rows, _ := s.CountEvents(ctx)
-	fmt.Printf("dedup    : 10000 soumis -> %d lignes (attendu %d), %d « nouveau », erreurs %s, %.2fs\n",
+	fmt.Printf("dedup   : 10000 submitted -> %d rows (expected %d), %d new, errors %s, %.2fs\n",
 		rows, distinct, fresh.Load(), &errs, time.Since(t0).Seconds())
 }
 
-// 2. Débit d'écriture de runs pendant 5 s pour 1, 4 et 16 goroutines.
+// 2. Run write throughput for 5 s with 1, 4 and 16 goroutines.
 var runSeq atomic.Int64
 
 func scenarioWrites(ctx context.Context, s Store) {
@@ -146,14 +146,14 @@ func scenarioWrites(ctx context.Context, s Store) {
 				}
 			}
 		})
-		fmt.Printf("écriture : %2d goroutines -> %7.0f ops/s, erreurs %s\n", workers, float64(ops.Load())/5, &errs)
+		fmt.Printf("writes  : %2d goroutines -> %7.0f ops/s, errors %s\n", workers, float64(ops.Load())/5, &errs)
 	}
 }
 
-// 3. Réclamation de 10 000 jobs par 4 workers : aucun job ne doit être traité deux fois.
+// 3. Claiming 10,000 jobs with 4 workers: no job may be processed twice.
 func scenarioJobs(ctx context.Context, s Store) {
 	if err := s.EnqueueJobs(ctx, 10000); err != nil {
-		fmt.Println("jobs     : enqueue:", err)
+		fmt.Println("jobs    : enqueue:", err)
 		return
 	}
 	var mu sync.Mutex
@@ -184,12 +184,12 @@ func scenarioJobs(ctx context.Context, s Store) {
 		dups += c - 1
 	}
 	done, _ := s.CountJobsDone(ctx)
-	fmt.Printf("jobs     : %d traités, %d terminés en base, %d en double (attendu 0), erreurs %s, %.2fs\n",
+	fmt.Printf("jobs    : %d processed, %d done in database, %d duplicates (expected 0), errors %s, %.2fs\n",
 		len(seen), done, dups, &errs, time.Since(t0).Seconds())
 }
 
-// 4. Crash : 8 goroutines écrivent jusqu'à ce que le moteur soit tué. Un identifiant
-// n'est écrit dans le fichier d'acquittement qu'après la réponse du moteur.
+// 4. Crash: 8 goroutines write until the engine is killed. An identifier is only
+// written to the ack file after the engine has answered.
 func crashWriter(ctx context.Context, name, ackPath string) {
 	s, err := open(ctx, name)
 	if err == nil {
@@ -206,14 +206,14 @@ func crashWriter(ctx context.Context, name, ackPath string) {
 		for {
 			id := seq.Add(1)
 			if s.InsertRun(ctx, id) != nil {
-				return // le moteur a été tué
+				return // the engine was killed
 			}
 			mu.Lock()
 			fmt.Fprintln(ack, id)
 			mu.Unlock()
 		}
 	})
-	fmt.Println("writer arrêté (moteur injoignable)")
+	fmt.Println("writer stopped (engine unreachable)")
 }
 
 func crashVerify(ctx context.Context, name, ackPath string) {
@@ -236,6 +236,6 @@ func crashVerify(ctx context.Context, name, ackPath string) {
 			lost++
 		}
 	}
-	fmt.Printf("crash    : %-10s %d écritures acquittées, %d perdues après le kill (attendu 0), %d lignes en base\n",
+	fmt.Printf("crash   : %-10s %d acknowledged writes, %d lost after the kill (expected 0), %d rows in database\n",
 		name, acked, lost, len(have))
 }

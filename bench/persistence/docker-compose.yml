@@ -1,5 +1,5 @@
-# Moteurs candidats pour le POC de persistance (voir docs/technical_choices/persistence_choice.md).
-# Réglages par défaut volontairement conservés (fsync actif pour PostgreSQL).
+# Candidate engines for the persistence POC (see docs/technical_choices/persistence_choice.md).
+# Default settings are kept on purpose (fsync is on for PostgreSQL).
 services:
   postgres:
     image: postgres:17

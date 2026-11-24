@@ -16,8 +16,8 @@ type mongoStore struct {
 	name string
 }
 
-// journaled=true : écriture acquittée après flush du journal (j:true).
-// journaled=false : write concern par défaut (w:1).
+// journaled=true: writes are acknowledged after the journal is flushed (j:true).
+// journaled=false: default write concern (w:1).
 func newMongo(ctx context.Context, uri, name string, journaled bool) (Store, error) {
 	wc := writeconcern.W1()
 	if journaled {

@@ -2,21 +2,21 @@ package main
 
 import "context"
 
-// Store est l'interface minimale que chaque moteur doit offrir pour les scénarios.
+// Store is the minimal interface each engine must offer for the scenarios.
 type Store interface {
 	Name() string
 	Reset(ctx context.Context) error
 	Close()
 
-	// Hooks : true si l'événement est nouveau.
+	// Hooks: true if the event is new.
 	RecordEvent(ctx context.Context, areaID int64, extID string) (bool, error)
 	CountEvents(ctx context.Context) (int64, error)
 
-	// Runs : insertion d'un run avec un identifiant imposé.
+	// Runs: insert a run with a given identifier.
 	InsertRun(ctx context.Context, id int64) error
 	RunIDs(ctx context.Context) (map[int64]struct{}, error)
 
-	// Jobs : file en base.
+	// Jobs: queue stored in the database.
 	EnqueueJobs(ctx context.Context, n int) error
 	ClaimJob(ctx context.Context) (id int64, ok bool, err error)
 	FinishJob(ctx context.Context, id int64) error

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Scénario 4 : tuer le moteur pendant l'écriture, redémarrer, vérifier.
-# `docker kill` envoie SIGKILL au processus : cela teste le crash du processus,
-# pas la coupure de courant (le cache disque de l'OS survit).
+# Scenario 4: kill the engine during writes, restart it, verify.
+# `docker kill` sends SIGKILL to the process: this tests a process crash,
+# not a power cut (the OS disk cache survives).
 set -euo pipefail
 cd "$(dirname "$0")"
 ACK=$(mktemp)

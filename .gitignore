@@ -13,21 +13,21 @@ build/
 result
 .direnv/
 
-# Environnement et secrets
+# Environment and secrets
 .env
 .env.*
 !.env.example
 
-# Bases locales et sorties du POC de persistance
+# Local databases and persistence POC output
 *.db
 *.db-*
 
-# Éditeurs
+# Editors
 .idea/
 .vscode/
 *.swp
 
-# Docs du sujet et skills locaux
+# Subject docs and local skills
 project_docs/
 subject_docs/
 .claude/skills/

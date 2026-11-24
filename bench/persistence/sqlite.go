@@ -13,8 +13,8 @@ type sqliteStore struct {
 	name string
 }
 
-// newSQLite ouvre une base fichier en WAL, synchronous=FULL.
-// maxConns=1 : configuration « réglée » ; maxConns>1 : pool naïf.
+// newSQLite opens a file database in WAL mode with synchronous=FULL.
+// maxConns=1 is the tuned setup; maxConns>1 is a naive pool.
 func newSQLite(path, name string, maxConns int) (Store, error) {
 	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(FULL)", path)
 	db, err := sql.Open("sqlite", dsn)
@@ -89,7 +89,7 @@ INSERT INTO jobs (status) SELECT 'pending' FROM seq`, n)
 	return err
 }
 
-// Pas de SKIP LOCKED : l'UPDATE … RETURNING mono-instruction est atomique sous le verrou d'écriture.
+// There is no SKIP LOCKED: a single UPDATE … RETURNING statement is atomic under the write lock.
 func (s *sqliteStore) ClaimJob(ctx context.Context) (int64, bool, error) {
 	var id int64
 	err := s.db.QueryRowContext(ctx, `
