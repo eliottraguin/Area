@@ -20,6 +20,6 @@ J’ajouterais une commande de lancement dans `package.json` et un test HTTP aut
 
 ## Reproduire
 
-Depuis `bootstrap/Typescript`, installer les dépendances avec `npm ci`, puis lancer `PORT=8080 node main.ts` avec Node.js 24. Dans un second terminal, exécuter `curl http://localhost:8080/ping`.
+Depuis `docs/spikes/Typescript`, installer les dépendances avec `npm ci`, puis lancer `PORT=8080 node main.ts` avec Node.js 24. Dans un second terminal, exécuter `curl http://localhost:8080/ping`.
 
 Un essai HTTP sur un autre port libre a confirmé que le serveur utilise `PORT` et que le corps de `/ping` correspond exactement au résultat attendu.
