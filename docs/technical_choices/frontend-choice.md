@@ -8,35 +8,57 @@ The server is written in Go and stores its data in PostgreSQL, as decided in the
 
 The web client is a graph editor where users build workflows, so we looked at the four main web frameworks: React, Vue, Svelte, and Angular. The Android client lists workflows, shows their status, and lets users switch them on or off, so we looked at React Native with Expo, Flutter, Kotlin with Jetpack Compose, and Lynx. We did not keep React Native Web or Flutter Web as options for the web client, because they would give the builder the constraints of a mobile toolkit without a real DOM.
 
-We prototyped React, React Native, and Lynx. We compared Vue, Svelte, Angular, Flutter, and Kotlin only from their documentation, their libraries, and the activity of their repositories, so their scores below rest on less evidence.
+We prototyped React, Vue, Svelte, and Angular for the web, and React Native and Lynx for Android. Flutter and Kotlin are only compared from their documentation, their libraries, and the activity of their repositories, so their scores below rest on less evidence.
 
 ## Prototype Comparison
 
-We built the same screen with React and Vite, React Native with Expo, and Lynx (ReactLynx): a list of workflows with their last run status, a switch that enables or disables a workflow through `PATCH /workflows/{id}` with a bearer token, and an EN/FR toggle. All three apps use the same small mock API, described by an OpenAPI file. We then added two things the brief makes important: an OIDC login (authorization code with PKCE) against a mock provider, and, on the web only, a small workflow builder with React Flow showing a trigger, a condition, and two reactions.
+We built the same screen with each candidate that we prototyped: a list of workflows with their last run status, a switch that enables or disables a workflow through `PATCH /workflows/{id}` with a bearer token, and an EN/FR toggle. All the apps use the same small mock API, described by an OpenAPI file. We then added two things the brief makes important: an OIDC login (authorization code with PKCE) against a mock provider, and, on the web only, a small workflow builder showing a trigger, a condition, and two reactions. The builder uses React Flow, Vue Flow, Svelte Flow, and ngx-vflow.
 
-| | React (Vite) | React Native (Expo SDK 58) | Lynx (ReactLynx 0.129) |
-| --- | --- | --- | --- |
-| Screen code | 39 lines | 65 lines | 48 lines and 5 lines of CSS |
-| `npm install` | 3 s, 97 MB | about 15 s, 385 MB | 24 s, 474 MB |
-| Build | 1 s | 6 s (`expo export --platform android`) | 5 s, including the type check |
-| Output | 221 kB of JavaScript (69 kB gzip), 470 kB with the builder | 1.5 MB Hermes bundle | 99 kB `.lynx.bundle` |
+### Web
 
-We ran the Android apps on an x86_64 emulator (Android 35, Pixel 6 profile). Expo ran in Expo Go and Lynx in the LynxExplorer 4.2.0 APK from the Lynx releases. The browser checks used Playwright and axe-core.
+| | React (Vite) | Vue (Vite) | Svelte (Vite) | Angular |
+| --- | --- | --- | --- | --- |
+| Screen, login, and builder code | 88 lines | 79 lines | 81 lines | 107 lines |
+| `npm install` of the scaffold | 3 s, 97 MB | 2 s, 84 MB | 3 s, 77 MB | 8 s, 312 MB |
+| Build | 1 s | 2 s | 1 s | 2 s |
+| JavaScript output | 470 kB (154 kB gzip) | 289 kB (93 kB gzip) | 307 kB (97 kB gzip) | 421 kB (107 kB gzip) |
 
-| Check | React (Vite) | React Native (Expo Go) | Lynx (LynxExplorer) |
-| --- | --- | --- | --- |
-| The screen shows the API data | Yes | Yes | Yes, once `<list>` has an explicit height. Without it the list stays empty. |
-| Toggle and EN/FR switch | Not clicked | Not tapped | Tapped on the emulator, both work |
-| axe-core | 0 violations, 3 elements with `role=switch` | Not applicable | Not applicable |
-| Android accessibility tree | Not applicable | 3 `android.widget.Switch`, checkable and checked, with labels | Only the title and the native toolbar |
-| TalkBack focus | Not applicable | Lands on the app's own elements | Stays on the native back arrow, taps go straight to the app |
-| OIDC with PKCE | Works: login, user name shown, list loaded with the token, token absent from local and session storage | Partial, see below | Not attempted |
-| Workflow builder | Dragging a connection works (2 to 3 edges), nodes are focusable, axe-core reports 0 violations | Not applicable | Not applicable |
-| Web target | Native | Not used | The same source builds a web bundle (97.6 kB), but we did not get it to render in a browser |
+The checks ran in Chromium with Playwright and axe-core, against the mock API and the mock OIDC provider.
+
+| Check | React | Vue | Svelte | Angular |
+| --- | --- | --- | --- | --- |
+| axe-core, before and after login | 0 violations | 0 violations | 0 violations | 0 violations |
+| OIDC login with PKCE, user name shown, 3 switches | Works | Works | Works | Works |
+| Access token in local or session storage | No | No | No | No |
+| Switch toggles, EN/FR changes the title | Works | Works | Works | Works |
+| Builder, dragging a connection | 2 to 3 edges | 2 to 3 edges | 2 to 3 edges | 2 to 3 edges, once the graph has an explicit size. Without it the graph was clipped and the drag did nothing. |
+| Builder, nodes and edges reachable with Tab | Yes | Yes | Yes | No |
+
+In the four apps the login button, the list, and the switches are the same plain HTML. The builder is where the frameworks differ: React Flow and Svelte Flow come from the same maintainers and behaved the same way. Vue Flow worked as well. ngx-vflow draws its nodes in SVG without keyboard focus, and it needs a fixed `view` size when its parent is not a block element.
+
+### Android
+
+We ran the apps on an x86_64 emulator (Android 35, Pixel 6 profile). Expo ran in Expo Go and Lynx in the LynxExplorer 4.2.0 APK from the Lynx releases.
+
+| | React Native (Expo SDK 58) | Lynx (ReactLynx 0.129) |
+| --- | --- | --- |
+| Screen code | 65 lines | 48 lines and 5 lines of CSS |
+| `npm install` | about 15 s, 385 MB | 24 s, 474 MB |
+| Build | 6 s (`expo export --platform android`) | 5 s, including the type check |
+| Output | 1.5 MB Hermes bundle | 99 kB `.lynx.bundle` |
+
+| Check | React Native (Expo Go) | Lynx (LynxExplorer) |
+| --- | --- | --- |
+| The screen shows the API data | Yes | Yes, once `<list>` has an explicit height. Without it the list stays empty. |
+| Toggle and EN/FR switch | Not tapped | Tapped on the emulator, both work |
+| Android accessibility tree | 3 `android.widget.Switch`, checkable and checked, with labels | Only the title and the native toolbar |
+| TalkBack focus | Lands on the app's own elements | Stays on the native back arrow, taps go straight to the app |
+| OIDC with PKCE | Partial, see below | Not attempted |
+| Web target | Not used | The same source builds a web bundle (97.6 kB), but we did not get it to render in a browser |
 
 On Android, the Expo login opens a Chrome Custom Tab on the provider, and the redirect comes back to Expo Go. Expo Go then restarts the app, so the code exchange does not complete. A development build would be needed to finish the test.
 
-Lynx needed its own tags (`view`, `text`, `list`), React Native its own components, and React the usual HTML elements. Writing the screen took about the same effort in the three cases. Lynx is the smallest bundle, but the runtime lives in the host app, so the sizes cannot be compared directly with Hermes or with web JavaScript.
+Lynx needed its own tags (`view`, `text`, `list`), and React Native its own components. Writing the screen took about the same effort in both cases. Lynx is the smallest bundle, but the runtime lives in the host app, so the sizes cannot be compared directly with Hermes.
 
 ### Maintenance
 
