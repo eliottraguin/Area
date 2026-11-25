@@ -90,6 +90,22 @@ We scored each candidate from 0 to 5 on the criteria of #9, plus maintenance, an
 
 The ranking does not depend on our untested accessibility scores. With 5 instead of 4, Svelte reaches 80, Vue 78, and Angular 76, which is still behind React.
 
+### Android client
+
+| Criterion | Weight | React Native (Expo) | Flutter | Kotlin (Compose) | Lynx | Why |
+| --- | --- | --- | --- | --- | --- | --- |
+| Team familiarity | 2 | 3 | 1 | 1 | 3 | React Native and Lynx use TypeScript and React concepts. Flutter needs Dart and Kotlin is a new language with the Android SDK, and nobody is recorded as knowing either. |
+| Implementation effort | 2 | 4 | 3 | 3 | 4 | React Native and Lynx can reuse the generated client and the types of the web client. Flutter and Kotlin need a second language. Lynx's `<list>` needed an explicit size. |
+| OpenAPI integration | 2 | 5 | 4 | 4 | 5 | OpenAPI Generator has `dart`, `dart-dio`, and `kotlin` clients, but they would be a second client to maintain next to the TypeScript one. |
+| Session security | 3 | 4 | 4 | 4 | 1 | Expo has `expo-secure-store` and `expo-auth-session`, but the Android login did not finish in Expo Go. Flutter has `flutter_secure_storage` (11.2.0, 2026-09-16) and `flutter_appauth` (13.0.0, 2026-10-30). Kotlin uses the Android Keystore directly. We found nothing for Lynx. |
+| Accessibility | 3 | 5 | 4 | 4 | 1 | Android listed our switches as real switches in the React Native app. Flutter and Kotlin have their own accessibility APIs, which we did not test. None of the Lynx rows or buttons reached the accessibility tree. |
+| Localization | 1 | 4 | 4 | 5 | 3 | React Native has `i18next` and `expo-localization`, Flutter has `intl`, and Kotlin uses the locale and string resources of Android. Lynx documents `i18next`, and we found no device language API. |
+| Reproducible delivery | 2 | 4 | 4 | 4 | 2 | React Native, Flutter, and Kotlin build an APK from the command line with Gradle or their own tool, but we only ran the Expo export. A Lynx app needs a native host app, and we only ran it inside LynxExplorer. |
+| Maintenance and ecosystem | 2 | 5 | 5 | 5 | 2 | Contributors and activity from the snapshot above. |
+| **Weighted total (/85)** | | **73** | **62** | **63** | **41** | |
+
+React Native stays first under the kinder assumptions. With 5 on accessibility for Flutter and Kotlin, they reach 65 and 66, and with 3 on familiarity as well, 69 and 70. If we give Lynx 3 on accessibility and 2 on session security, because LynxExplorer may be the cause of what we saw, it reaches 50.
+
 ## Why React and React Native Fit AREA
 
 - **A builder that needs a real DOM.** The workflow builder is a graph editor with nodes, connections, and side panels. React Flow gave us draggable nodes and connections in one component, and the page passed axe-core without changes on our side. [React Flow](https://reactflow.dev/)
