@@ -93,12 +93,3 @@ The mock OIDC provider only exists for the spike. It accepts any redirect URI an
 We chose React with Vite and TypeScript for the web client, and React Native with Expo for the Android client. They scored 73 out of 85 against 41 for Lynx. We did not choose Lynx. It builds both clients from one codebase, but the web client is a graph editor that benefits from a real DOM, and the Android client needs secure token storage and accessibility support that we could only find in React Native and Expo. The younger ecosystem also matters for a project with a fixed deadline.
 
 We accept that we will maintain two UI codebases. We keep the cost down by sharing the generated OpenAPI client, the types, and the workflow logic between them. Screens and components are not shared.
-
-## Limits of the Prototypes
-
-- We did not complete the OIDC login on Android. Expo Go restarts the app on the redirect, and we did not try a development build.
-- Lynx for Web did not render. The host page needed WebAssembly handling that Vite rejected in development and in production builds, and we stopped there.
-- The Lynx accessibility result comes from LynxExplorer. A host app that enables accessibility itself might behave differently, and we did not build one.
-- The emulator has no speech engine, so we compared the accessibility tree and the TalkBack focus, not the spoken text.
-- We measured nothing on performance. Each number comes from one run, and the sizes cannot be compared across runtimes.
-- The OIDC provider is a mock. The builder only shows one trigger, one condition, and two reactions, and has no validation.
