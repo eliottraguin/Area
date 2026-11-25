@@ -1,0 +1,41 @@
+openapi: 3.0.3
+info: { title: AREA spike API, version: 0.0.1 }
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+  schemas:
+    Workflow:
+      type: object
+      required: [id, name, enabled, lastRun]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        enabled: { type: boolean }
+        lastRun: { type: string, enum: [success, failed, never] }
+security: [{ bearer: [] }]
+paths:
+  /workflows:
+    get:
+      operationId: listWorkflows
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Workflow' } }
+        '401': { description: missing or invalid token }
+  /workflows/{id}:
+    patch:
+      operationId: setWorkflowEnabled
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, required: [enabled], properties: { enabled: { type: boolean } } }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workflow' }
+        '401': { description: missing or invalid token }
