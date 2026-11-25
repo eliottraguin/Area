@@ -257,11 +257,11 @@ volumes:
 
 ### Practical evidence (POC)
 
-The POC lives in `bench/persistence/` (Go and Docker Compose). It runs the same scenarios on the three engines, behind a common `Store` interface.
+The POC lives in `benchmarks/persistence/` (Go and Docker Compose). It runs the same scenarios on the three engines, behind a common `Store` interface.
 
 ```
 nix develop                        # Go, psql, sqlite3
-cd bench/persistence
+cd benchmarks/persistence
 docker compose up -d --wait        # postgres:17 and mongo:8
 go run . bench                     # scenarios 1 to 3
 ./crash.sh                         # scenario 4
@@ -346,5 +346,5 @@ Revisit this choice if the evaluation shows that JSONB is not enough for workflo
 
 ## References
 
-- [POC code](../../bench/persistence/)
+- [POC code](../../benchmarks/persistence/)
 - [ADR-0001: backend language](0001-backend-language.md)
