@@ -1,12 +1,18 @@
-# Choosing React and React Native for the AREA Clients
+# Choosing the Frontend Technologies for the AREA Clients
 
-We are a team of four. The brief asks for a web client that builds workflows and an Android client that monitors and manages them. Both talk to the same server through its OpenAPI contract, and both have to meet the accessibility, localization, and reproducible delivery requirements. See the AREA brief, sections “Clients & Server” and “Deliverables and expectations”, and the scope in #3. Everyone on the team already knew TypeScript, as noted in the [backend choice](backend-choice.md).
+We are a team of four. The brief asks for a web client that builds workflows and an Android client that monitors and manages them. Both talk to the same server through its OpenAPI contract, and both have to meet the accessibility, localization, and reproducible delivery requirements. See the AREA brief, sections “Clients & Server” and “Deliverables and expectations”, and the scope in #3.
+
+The server is written in Go and stores its data in PostgreSQL, as decided in the [backend choice](backend-choice.md) and the [persistence choice](persistence_choice.md). Neither decision forces a language on the clients, because they only see the OpenAPI contract. Everyone on the team already knew TypeScript, and nobody is recorded as knowing Dart or Kotlin.
+
+## Candidates
+
+The web client is a graph editor where users build workflows, so we looked at the four main web frameworks: React, Vue, Svelte, and Angular. The Android client lists workflows, shows their status, and lets users switch them on or off, so we looked at React Native with Expo, Flutter, Kotlin with Jetpack Compose, and Lynx. We did not keep React Native Web or Flutter Web as options for the web client, because they would give the builder the constraints of a mobile toolkit without a real DOM.
+
+We prototyped React, React Native, and Lynx. We compared Vue, Svelte, Angular, Flutter, and Kotlin only from their documentation, their libraries, and the activity of their repositories, so their scores below rest on less evidence.
 
 ## Prototype Comparison
 
-We compared two approaches. The first uses React with Vite for the web and React Native with Expo for Android. The second uses Lynx (ReactLynx) for both clients. We did not keep React Native Web as a third option, because it would give the web builder the constraints of React Native without a real DOM.
-
-For each approach we built the same screen: a list of workflows with their last run status, a switch that enables or disables a workflow through `PATCH /workflows/{id}` with a bearer token, and an EN/FR toggle. All three apps use the same small mock API, described by an OpenAPI file. We then added two things the brief makes important: an OIDC login (authorization code with PKCE) against a mock provider, and, on the web only, a small workflow builder with React Flow showing a trigger, a condition, and two reactions.
+We built the same screen with React and Vite, React Native with Expo, and Lynx (ReactLynx): a list of workflows with their last run status, a switch that enables or disables a workflow through `PATCH /workflows/{id}` with a bearer token, and an EN/FR toggle. All three apps use the same small mock API, described by an OpenAPI file. We then added two things the brief makes important: an OIDC login (authorization code with PKCE) against a mock provider, and, on the web only, a small workflow builder with React Flow showing a trigger, a condition, and two reactions.
 
 | | React (Vite) | React Native (Expo SDK 58) | Lynx (ReactLynx 0.129) |
 | --- | --- | --- | --- |
