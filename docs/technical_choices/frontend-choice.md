@@ -40,16 +40,22 @@ Lynx needed its own tags (`view`, `text`, `list`), React Native its own componen
 
 ### Maintenance
 
-We looked at the three repositories on GitHub on 2026-11-24.
+We looked at the repositories on GitHub on 2026-11-25. All of them received commits that same week.
 
-| | React Native | Expo | Lynx |
-| --- | --- | --- | --- |
-| First commit | 2015 | 2016 | March 2025 |
-| Stars | about 127,000 | about 54,000 | about 15,000 |
-| Contributors | about 4,400 | about 2,300 | about 110 |
-| Latest release | v0.88.1 (2026-10-27) | SDK templates updated 2026-11-17 | 4.2.0 (2026-10-27) |
+| Web | React | Vue | Svelte | Angular |
+| --- | --- | --- | --- | --- |
+| First commit | 2013 | 2018 | 2016 | 2014 |
+| Stars | about 253,000 | about 55,000 | about 90,000 | about 102,000 |
+| Contributors | about 2,000 | about 670 | about 1,000 | about 2,700 |
+| Latest release | v19.3.1 (2026-10-14) | v3.5.46 (2026-11-20) | 5.59.1 (2026-11-20) | v22.3.0 (2026-11-18) |
 
-All three are active. React Native and Expo have roughly 20 to 40 times more contributors than Lynx, and years more production use, so we expect to find answers faster when something breaks.
+| Android | React Native | Expo | Flutter | Kotlin (Jetpack Compose) | Lynx |
+| --- | --- | --- | --- | --- | --- |
+| First commit | 2015 | 2016 | 2015 | not on GitHub | March 2025 |
+| Stars | about 127,000 | about 54,000 | about 181,000 | not on GitHub | about 15,000 |
+| Contributors | about 4,400 | about 2,300 | about 2,500 | not on GitHub | about 110 |
+
+Jetpack Compose is developed by Google inside the Android Open Source Project, so it has no repository we can compare with the others. Every candidate is actively maintained, and the large frameworks are backed by a company (Meta, Google) or a very large community. Lynx is the exception. It has roughly 20 to 40 times fewer contributors than React Native and Expo and only nine months of history, so we expect to find fewer answers when something breaks.
 
 ### Reproduce the Measurements
 
