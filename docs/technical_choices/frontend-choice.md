@@ -31,3 +31,16 @@ We ran the Android apps on an x86_64 emulator (Android 35, Pixel 6 profile). Exp
 On Android, the Expo login opens a Chrome Custom Tab on the provider, and the redirect comes back to Expo Go. Expo Go then restarts the app, so the code exchange does not complete. A development build would be needed to finish the test.
 
 Lynx needed its own tags (`view`, `text`, `list`), React Native its own components, and React the usual HTML elements. Writing the screen took about the same effort in the three cases. Lynx is the smallest bundle, but the runtime lives in the host app, so the sizes cannot be compared directly with Hermes or with web JavaScript.
+
+### Maintenance
+
+We looked at the three repositories on GitHub on 2026-11-24.
+
+| | React Native | Expo | Lynx |
+| --- | --- | --- | --- |
+| First commit | 2015 | 2016 | March 2025 |
+| Stars | about 127,000 | about 54,000 | about 15,000 |
+| Contributors | about 4,400 | about 2,300 | about 110 |
+| Latest release | v0.88.1 (2026-10-27) | SDK templates updated 2026-11-17 | 4.2.0 (2026-10-27) |
+
+All three are active. React Native and Expo have roughly 20 to 40 times more contributors than Lynx, and years more production use, so we expect to find answers faster when something breaks.
