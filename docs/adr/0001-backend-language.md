@@ -1,8 +1,23 @@
-# Choosing Go for the AREA Backend
+# ADR-0001: Use Go for the AREA backend
+
+- **Status:** Accepted
+- **Date:** 2026-11-24
+- **Deciders:** AREA team (four people)
+
+## Context
 
 We are a team of four. Our backend must provide a shared API for the web and Android clients, detect events even when the clients are closed, and run the associated workflows. The brief requires at least five services and ten Actions and REActions combined. At least half of the services must require OAuth2 authorization. See the AREA brief, sections “Hooks”, “Clients & Server”, and “Deliverables and expectations”.
 
-## Prototype Comparison
+## Decision drivers
+
+- A shared API for the web and Android clients, testable against the OpenAPI contract.
+- Autonomous hooks that run while no client is open.
+- Calls to third-party services, including OAuth2.
+- An explicit workflow model.
+- A reproducible build with Docker Compose.
+- Learning a new technology as a team, while keeping getting started manageable.
+
+## Options considered
 
 We compared Go, Rust, and TypeScript in three spikes limited to 25 minutes each. We used the same target for all three. The server had to read its port from `PORT`, be able to listen on `8080`, and return exactly `{"status":"ok"}` for `GET /ping`.
 
@@ -25,7 +40,7 @@ PORT=8080 go run .
 
 In a second terminal, `curl -fsS http://localhost:8080/ping` should return `{"status":"ok"}`.
 
-## Why Go Fits AREA
+### Option A: Go
 
 - **A shared API for both clients.** We can build routes with `net/http`, including the route that exposes the catalogue of Services, Actions, and REActions. With `httptest`, we can send requests to handlers and check their responses. These tools give us a starting point for the test required by the brief, which must fail if the implementation departs from the OpenAPI contract, including its error responses. [net/http](https://pkg.go.dev/net/http) · [httptest](https://pkg.go.dev/net/http/httptest)
 - **Autonomous hooks.** We can use goroutines to detect events alongside the HTTP server and `context` to shut down those tasks cleanly. The engine controls the order of reactions within each workflow. We also need to decide how to identify and track events we have already processed, as the brief requires. [Goroutines](https://go.dev/doc/effective_go#goroutines) · [context](https://pkg.go.dev/context)
@@ -33,7 +48,17 @@ In a second terminal, `curl -fsS http://localhost:8080/ping` should return `{"st
 - **An explicit workflow model.** Go structs let us represent triggers, reactions, and conditions with typed data. We can validate the rules from the brief when saving a workflow. For example, we can check that it has at most one condition and that every reference points to data declared by an earlier node.
 - **A backend we can integrate with Docker Compose.** `go build` produces a server executable. We can compile it in a container build stage and run it from the final image. This gives us a starting point for the reproducible build required by the brief. [go build command](https://pkg.go.dev/cmd/go#hdr-Compile_packages_and_dependencies)
 
-## Security and Dependencies
+### Option B: Rust
+
+- Pros: an opportunity to explore its optimization options.
+- Cons: 20 min to first success, spent mostly on setting up the server; external HTTP dependencies (Axum, Tokio).
+
+### Option C: TypeScript
+
+- Pros: 5 min to first success; everyone on the team already knew it, which made getting started more predictable.
+- Cons: not a new technology for the team; external HTTP dependency (Express).
+
+### Security and dependencies
 
 The Go prototype uses only the standard library for this route. The Rust and TypeScript prototypes use external HTTP dependencies. For all three options, OAuth2 security depends on the library we choose, how it is maintained, and how we use it. We plan to integrate OAuth2 for the third-party services required by the brief. The library choice is still open.
 
@@ -43,4 +68,20 @@ For AREA, we need to verify OAuth2 callback validation, limit the permissions we
 
 We chose **Go** because we wanted to learn a new technology as a team. We had all used TypeScript before, so it would have let us move faster at the start. Rust offered an opportunity to explore its optimization options, and we spent more time figuring out how to set up its server.
 
-For us, Go is the middle ground. It gives us a new technology to learn, and we got the first route working in 12 minutes with the standard library. We accept that getting up to speed will take longer than with TypeScript.
+For us, Go is the middle ground. It gives us a new technology to learn, and we got the first route working in 12 minutes with the standard library.
+
+## Consequences
+
+- **Positive:** the team learns a new technology; the prototype route needs only the standard library; `go build` produces a server executable.
+- **Negative / accepted trade-offs:** getting up to speed will take longer than with TypeScript.
+- **Follow-up actions:**
+  - Choose the OAuth2 library.
+  - Verify OAuth2 callback validation, limit the permissions we request, and protect the tokens stored for hooks.
+  - Decide how to identify and track events already processed.
+
+## References
+
+- AREA brief, sections "Hooks", "Clients & Server", and "Deliverables and expectations"
+- [Spike comparison](../spikes/DISTANCE.md)
+- [Go code](../spikes/Go/server.go) · [Rust code](../spikes/Rust/src/main.rs) · [TypeScript code](../spikes/Typescript/main.ts)
+- [ADR-0002: persistence engine](0002-persistence-engine.md)
