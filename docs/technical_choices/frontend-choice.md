@@ -56,3 +56,21 @@ npm create rspeedy@latest lynx-app -- --template react-ts
 ```
 
 We built them with `npm run build`, `npx expo export --platform android`, and `npm run build` respectively. On the emulator, Expo ran in Expo Go (`npx expo start --android`) and Lynx in the LynxExplorer 4.2.0 APK, opened with `adb shell am start -a android.intent.action.VIEW -d 'lynx://open?url=…'` after an `adb reverse` of the dev server port. The accessibility checks used `adb shell uiautomator dump` with TalkBack enabled, and axe-core through Playwright on the web.
+
+## Scoring
+
+We scored both approaches from 0 to 5 on the criteria of #9, plus maintenance. Each score comes from the results above, so it is our judgment and not a measurement. We gave a weight of 3 to session security and accessibility, because the brief treats them as requirements and a failure there blocks the client. Maintenance and delivery weigh 2, and localization weighs 1 because we only tested a two-entry dictionary.
+
+| Criterion | Weight | React + React Native | Lynx | Why |
+| --- | --- | --- | --- | --- |
+| Team familiarity | 2 | 4 | 3 | We all know TypeScript and React. React Native has its own components, and Lynx adds its own tags and a toolchain we have not used. |
+| Implementation effort | 2 | 3 | 4 | Lynx gives one codebase where we would write two UIs. Lynx's `<list>` needed a fix, and the missing libraries are counted in the next rows. |
+| OpenAPI integration | 2 | 5 | 5 | Both are TypeScript, so one generated client works everywhere. |
+| Session security | 3 | 4 | 1 | Expo has Keystore storage and a PKCE helper, and the web login worked without a persisted token. We found nothing equivalent for Lynx, and the Android login is not proven end to end. |
+| Accessibility | 3 | 5 | 1 | axe-core found 0 violations on the web, and Android sees real switches in the React Native app. None of the Lynx rows or buttons reached the accessibility tree. |
+| Localization | 1 | 4 | 3 | `i18next` works in both, and Expo reads the device language. We found nothing for Lynx. |
+| Reproducible delivery | 2 | 4 | 2 | Vite and Expo both build from the command line. A Lynx app needs a native host app to ship, and we only ran it inside LynxExplorer. |
+| Maintenance and ecosystem | 2 | 5 | 2 | About 20 to 40 times more contributors, and years of production use. |
+| **Weighted total (/85)** | | **73 (86%)** | **41 (48%)** | |
+
+The result does not depend on our two harshest scores for Lynx. If we give it 3 on accessibility and 2 on session security, because LynxExplorer may be the cause of what we saw, it reaches 50 (59%), which is still well below.
