@@ -55,7 +55,7 @@ We looked at the repositories on GitHub on 2026-11-25. All of them received comm
 | Stars | about 127,000 | about 54,000 | about 181,000 | not on GitHub | about 15,000 |
 | Contributors | about 4,400 | about 2,300 | about 2,500 | not on GitHub | about 110 |
 
-Jetpack Compose is developed by Google inside the Android Open Source Project, so it has no repository we can compare with the others. Every candidate is actively maintained, and the large frameworks are backed by a company (Meta, Google) or a very large community. Lynx is the exception. It has roughly 20 to 40 times fewer contributors than React Native and Expo and only nine months of history, so we expect to find fewer answers when something breaks.
+Jetpack Compose is developed by Google inside the Android Open Source Project, so it has no repository we can compare with the others. Every candidate is actively maintained, and the large frameworks are backed by a company (Meta, Google) or a very large community. Lynx is the exception. It has roughly 20 to 40 times fewer contributors than React Native and Expo and less than two years of history, so we expect to find fewer answers when something breaks.
 
 ### Reproduce the Measurements
 
