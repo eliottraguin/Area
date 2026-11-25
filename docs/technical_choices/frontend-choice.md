@@ -71,21 +71,24 @@ We built them with `npm run build`, `npx expo export --platform android`, and `n
 
 ## Scoring
 
-We scored both approaches from 0 to 5 on the criteria of #9, plus maintenance. Each score comes from the results above, so it is our judgment and not a measurement. We gave a weight of 3 to session security and accessibility, because the brief treats them as requirements and a failure there blocks the client. Maintenance and delivery weigh 2, and localization weighs 1 because we only tested a two-entry dictionary.
+We scored each candidate from 0 to 5 on the criteria of #9, plus maintenance, and for the web client the fit with a graph editor. The scores for React, React Native, and Lynx come from the prototypes. The others come from documentation and repositories, and we capped their accessibility score at 4 because we did not test them. Every score is our judgment and not a measurement. Session security, accessibility, and the graph editor weigh 3, because the brief treats the first two as requirements and the builder is the main job of the web client. Familiarity, effort, OpenAPI, delivery, and maintenance weigh 2. Localization weighs 1, because we only tested a two-entry dictionary.
 
-| Criterion | Weight | React + React Native | Lynx | Why |
-| --- | --- | --- | --- | --- |
-| Team familiarity | 2 | 4 | 3 | We all know TypeScript and React. React Native has its own components, and Lynx adds its own tags and a toolchain we have not used. |
-| Implementation effort | 2 | 3 | 4 | Lynx gives one codebase where we would write two UIs. Lynx's `<list>` needed a fix, and the missing libraries are counted in the next rows. |
-| OpenAPI integration | 2 | 5 | 5 | Both are TypeScript, so one generated client works everywhere. |
-| Session security | 3 | 4 | 1 | Expo has Keystore storage and a PKCE helper, and the web login worked without a persisted token. We found nothing equivalent for Lynx, and the Android login is not proven end to end. |
-| Accessibility | 3 | 5 | 1 | axe-core found 0 violations on the web, and Android sees real switches in the React Native app. None of the Lynx rows or buttons reached the accessibility tree. |
-| Localization | 1 | 4 | 3 | `i18next` works in both, and Expo reads the device language. We found nothing for Lynx. |
-| Reproducible delivery | 2 | 4 | 2 | Vite and Expo both build from the command line. A Lynx app needs a native host app to ship, and we only ran it inside LynxExplorer. |
-| Maintenance and ecosystem | 2 | 5 | 2 | About 20 to 40 times more contributors, and years of production use. |
-| **Weighted total (/85)** | | **73 (86%)** | **41 (48%)** | |
+### Web client
 
-The result does not depend on our two harshest scores for Lynx. If we give it 3 on accessibility and 2 on session security, because LynxExplorer may be the cause of what we saw, it reaches 50 (59%), which is still well below.
+| Criterion | Weight | React | Vue | Svelte | Angular | Why |
+| --- | --- | --- | --- | --- | --- | --- |
+| Team familiarity | 2 | 3 | 3 | 3 | 3 | We know TypeScript. We did not record who has used any of the four, so they score the same until the team tells us otherwise. |
+| Implementation effort | 2 | 4 | 3 | 3 | 2 | We built the screen and the builder with React in a few dozen lines each. Vue and Svelte should be close, but we did not build them. Angular has more concepts to learn, such as dependency injection and its own build tool. |
+| OpenAPI integration | 2 | 5 | 5 | 5 | 5 | OpenAPI Generator has `typescript-fetch`, `typescript-axios`, and `typescript-angular` clients. |
+| Session security | 3 | 4 | 4 | 4 | 4 | `oidc-client-ts` does not depend on a framework. We only ran it with React, and the real flow is not validated yet. |
+| Accessibility | 3 | 5 | 4 | 4 | 4 | axe-core found 0 violations on our React page. We did not test the other three. |
+| Localization | 1 | 4 | 4 | 3 | 5 | `i18next` and `vue-i18n` are widely used, Angular ships its own i18n, and Svelte has no official solution. |
+| Reproducible delivery | 2 | 4 | 4 | 4 | 4 | All four build a static folder from the command line. |
+| Maintenance and ecosystem | 2 | 5 | 4 | 4 | 5 | Contributors and release dates from the snapshot above. |
+| Graph editor | 3 | 5 | 4 | 3 | 2 | React Flow gave us a working builder. Svelte Flow comes from the same maintainers (`@xyflow/svelte` 2.0.3, updated 2026-11-23). Vue Flow is maintained by the community (`@vue-flow/core` 1.48.2, last published 2026-01-28). We found no xyflow library for Angular. |
+| **Weighted total (/100)** | | **88** | **75** | **77** | **73** | |
+
+The ranking does not depend on our untested accessibility scores. With 5 instead of 4, Svelte reaches 80, Vue 78, and Angular 76, which is still behind React.
 
 ## Why React and React Native Fit AREA
 
