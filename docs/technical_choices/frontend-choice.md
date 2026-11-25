@@ -85,32 +85,35 @@ The prototypes are throwaway and are not in the repository. Each one starts from
 
 ```sh
 npm create vite@latest react-web -- --template react-ts
+npm create vite@latest vue-web -- --template vue-ts
+npm create vite@latest svelte-web -- --template svelte-ts
+npx @angular/cli@latest new angular-web --defaults
 npx create-expo-app@latest expo-mobile --template blank-typescript
 npm create rspeedy@latest lynx-app -- --template react-ts
 ```
 
-We built them with `npm run build`, `npx expo export --platform android`, and `npm run build` respectively. On the emulator, Expo ran in Expo Go (`npx expo start --android`) and Lynx in the LynxExplorer 4.2.0 APK, opened with `adb shell am start -a android.intent.action.VIEW -d 'lynx://open?url=…'` after an `adb reverse` of the dev server port. The accessibility checks used `adb shell uiautomator dump` with TalkBack enabled, and axe-core through Playwright on the web.
+We built the web apps with `npm run build` (`ng build` for Angular), Expo with `npx expo export --platform android`, and Lynx with `npm run build`. On the emulator, Expo ran in Expo Go (`npx expo start --android`) and Lynx in the LynxExplorer 4.2.0 APK, opened with `adb shell am start -a android.intent.action.VIEW -d 'lynx://open?url=…'` after an `adb reverse` of the dev server port. The accessibility checks used `adb shell uiautomator dump` with TalkBack enabled, and axe-core through Playwright on the web.
 
 ## Scoring
 
-We scored each candidate from 0 to 5 on the criteria of #9, plus maintenance, and for the web client the fit with a graph editor. The scores for React, React Native, and Lynx come from the prototypes. The others come from documentation and repositories, and we capped their accessibility score at 4 because we did not test them. Every score is our judgment and not a measurement. Session security, accessibility, and the graph editor weigh 3, because the brief treats the first two as requirements and the builder is the main job of the web client. Familiarity, effort, OpenAPI, delivery, and maintenance weigh 2. Localization weighs 1, because we only tested a two-entry dictionary.
+We scored each candidate from 0 to 5 on the criteria of #9, plus maintenance, and for the web client the fit with a graph editor. The scores for the four web frameworks, React Native, and Lynx come from the prototypes. Flutter and Kotlin come from documentation and repositories, and we capped their accessibility score at 4 because we did not test them. Every score is our judgment and not a measurement. Session security, accessibility, and the graph editor weigh 3, because the brief treats the first two as requirements and the builder is the main job of the web client. Familiarity, effort, OpenAPI, delivery, and maintenance weigh 2. Localization weighs 1, because we only tested a two-entry dictionary.
 
 ### Web client
 
 | Criterion | Weight | React | Vue | Svelte | Angular | Why |
 | --- | --- | --- | --- | --- | --- | --- |
 | Team familiarity | 2 | 3 | 3 | 3 | 3 | We know TypeScript. We did not record who has used any of the four, so they score the same until the team tells us otherwise. |
-| Implementation effort | 2 | 4 | 3 | 3 | 2 | We built the screen and the builder with React in a few dozen lines each. Vue and Svelte should be close, but we did not build them. Angular has more concepts to learn, such as dependency injection and its own build tool. |
+| Implementation effort | 2 | 4 | 4 | 4 | 3 | The same screen, login, and builder took 79 to 88 lines in React, Vue, and Svelte. Angular needed 107 lines over three files, and a fix to the size of its graph. |
 | OpenAPI integration | 2 | 5 | 5 | 5 | 5 | OpenAPI Generator has `typescript-fetch`, `typescript-axios`, and `typescript-angular` clients. |
-| Session security | 3 | 4 | 4 | 4 | 4 | `oidc-client-ts` does not depend on a framework. We only ran it with React, and the real flow is not validated yet. |
-| Accessibility | 3 | 5 | 4 | 4 | 4 | axe-core found 0 violations on our React page. We did not test the other three. |
-| Localization | 1 | 4 | 4 | 3 | 5 | `i18next` and `vue-i18n` are widely used, Angular ships its own i18n, and Svelte has no official solution. |
-| Reproducible delivery | 2 | 4 | 4 | 4 | 4 | All four build a static folder from the command line. |
+| Session security | 3 | 4 | 4 | 4 | 4 | The login with PKCE worked in all four with `oidc-client-ts`, and no access token was left in the browser storage. The real flow is not validated yet. |
+| Accessibility | 3 | 5 | 5 | 5 | 3 | axe-core found 0 violations in all four. The builder nodes of Angular's ngx-vflow cannot be reached with the keyboard. |
+| Localization | 1 | 4 | 4 | 3 | 5 | The two-entry dictionary worked in all four. `i18next` and `vue-i18n` are widely used, Angular ships its own i18n, which we did not test, and Svelte has no official solution. |
+| Reproducible delivery | 2 | 4 | 4 | 4 | 4 | All four build a static folder from the command line in one or two seconds. |
 | Maintenance and ecosystem | 2 | 5 | 4 | 4 | 5 | Contributors and release dates from the snapshot above. |
-| Graph editor | 3 | 5 | 4 | 3 | 2 | React Flow gave us a working builder. Svelte Flow comes from the same maintainers (`@xyflow/svelte` 2.0.3, updated 2026-11-23). Vue Flow is maintained by the community (`@vue-flow/core` 1.48.2, last published 2026-01-28). We found no xyflow library for Angular. |
-| **Weighted total (/100)** | | **88** | **75** | **77** | **73** | |
+| Graph editor | 3 | 5 | 4 | 5 | 3 | React Flow and Svelte Flow come from the same maintainers (`@xyflow/react` 13.0.3 and `@xyflow/svelte` 2.0.3, both updated 2026-11-23). Both let us drag a connection and reach the nodes with Tab. Vue Flow (`@vue-flow/core` 1.48.2, last published 2026-01-28) worked too, and is maintained by the community. ngx-vflow (2.7.0, 2026-09-03) worked once it had a fixed size, but its nodes cannot be reached with the keyboard. |
+| **Weighted total (/100)** | | **88** | **83** | **85** | **75** | |
 
-The ranking does not depend on our untested accessibility scores. With 5 instead of 4, Svelte reaches 80, Vue 78, and Angular 76, which is still behind React.
+The margin between React and Svelte is small. If we gave Svelte 4 on localization and 5 on maintenance, they would tie at 88. We keep React because of those two rows, and because its programming model is the one React Native uses on Android.
 
 ### Android client
 
