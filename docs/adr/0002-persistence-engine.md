@@ -1,4 +1,10 @@
-## 1. Requirements
+# ADR-0002: Use PostgreSQL for persistence
+
+- **Status:** Proposed
+- **Date:** 2026-11-24
+- **Deciders:** AREA team (four people)
+
+## Context
 
 AREA stores and handles:
 
@@ -13,7 +19,7 @@ AREA stores and handles:
 
 Cross-cutting requirements from the subject: autonomous hooks (no client open), timestamped backups outside the database container, a health endpoint that reports the database, encryption of what a dump reveals, an inventory of personal data.
 
-## 2. Evaluation criteria
+## Decision drivers
 
 | # | Criterion | Weight | Why |
 |---|---|---|---|
@@ -27,9 +33,11 @@ Cross-cutting requirements from the subject: autonomous hooks (no client open), 
 | C8 | Job queue without a broker | 2 | retry + dead letter without an extra component |
 | C9 | Team learning curve | 1 | one week for the Plan milestone |
 
-## 3. Comparison
+## Options considered
 
-### 3.1 Overview
+PostgreSQL, SQLite and MongoDB.
+
+### Overview
 
 | | PostgreSQL | SQLite | MongoDB |
 |---|---|---|---|
@@ -45,7 +53,7 @@ Cross-cutting requirements from the subject: autonomous hooks (no client open), 
 | License | PostgreSQL (permissive) | public domain | SSPL (server) |
 | Access from several containers | yes (network) | impractical (shared file) | yes (network) |
 
-### 3.2 Scoring (0 to 5, weighted)
+### Scoring (0 to 5, weighted)
 
 | Criterion | Weight | PostgreSQL | SQLite | MongoDB |
 |---|---|---|---|---|
@@ -60,9 +68,9 @@ Cross-cutting requirements from the subject: autonomous hooks (no client open), 
 | C9 Learning curve | 1 | 3 | 5 | 3 |
 | Weighted total (/105) | | 98 (≈ 93%) | 69 (≈ 66%) | 77 (≈ 73%) |
 
-## 4. Analysis by criterion
+### Analysis by criterion
 
-### 4.1 Hook idempotence (C3)
+#### Hook idempotence (C3)
 
 A hook detects an event (new email, new commit…). It must record the event exactly once, even if polling sees it again.
 
@@ -95,7 +103,7 @@ func (s *Store) RecordEvent(ctx context.Context, areaID int64, extID string, pay
 
 The database enforces deduplication through a uniqueness constraint, so it stays correct even with several hook instances.
 
-SQLite accepts the same query (`ON CONFLICT DO NOTHING`). Its weak point is concurrency (§4.2).
+SQLite accepts the same query (`ON CONFLICT DO NOTHING`). Its weak point is concurrency (see "Write concurrency").
 
 With MongoDB:
 
@@ -108,7 +116,7 @@ if mongo.IsDuplicateKeyError(err) {
 
 The unique index must exist beforehand: `db.events.createIndex({area_id: 1, external_id: 1}, {unique: true})`.
 
-### 4.2 Write concurrency (C2)
+#### Write concurrency (C2)
 
 In AREA, the API (clients), the hooks and the workers write at the same time.
 
@@ -123,9 +131,9 @@ The pool must therefore be capped and every write routed through a single queue.
 
 PostgreSQL (MVCC) handles parallel writes without special configuration.
 
-MongoDB locks at the document level and also handles parallel writes (7,777 ops/s with 16 goroutines, see §6).
+MongoDB locks at the document level and also handles parallel writes (7,777 ops/s with 16 goroutines, see "Practical evidence").
 
-### 4.3 Job queue, retry and dead letter without a broker (C8)
+#### Job queue, retry and dead letter without a broker (C8)
 
 The subject requires that retry does not need a broker (ENG-RETRY). With PostgreSQL, the table itself serves as the queue:
 
@@ -172,7 +180,7 @@ SQLite has no `SKIP LOCKED`. With a single writer, claiming is safe inside one p
 
 MongoDB claims jobs with `findOneAndUpdate`, which is atomic, but keeping the job and the side effect atomic together requires a transaction, hence a replica set.
 
-### 4.4 Workflow modeling (C4)
+#### Workflow modeling (C4)
 
 Nodes have heterogeneous parameters. PostgreSQL combines relational columns and JSONB:
 
@@ -190,7 +198,7 @@ CREATE INDEX nodes_params_gin ON nodes USING GIN (params);
 
 MongoDB is more natural for a nested workflow document, but most of AREA's relations (user ↔ services ↔ workflows ↔ runs) are relational, with joins and cascading deletes (deleted account = deleted data). SQLite offers JSON (`json_extract`) but without equally rich indexing.
 
-### 4.5 Security (C5)
+#### Security (C5)
 
 | Aspect | PostgreSQL | SQLite | MongoDB |
 |---|---|---|---|
@@ -216,7 +224,7 @@ func Encrypt(key, plaintext []byte) ([]byte, error) {
 
 This choice makes C5 less discriminating between engines. The remaining difference is roles: PostgreSQL allows an application user without `DROP` rights, or with read-only access to an `audit` table.
 
-### 4.6 Docker operations (C6)
+#### Docker operations (C6)
 
 ```yaml
 services:
@@ -247,32 +255,7 @@ volumes:
 - Backups: `pg_dump` in a dedicated container. With SQLite, a file in use by the application would have to be copied (`.backup` / `VACUUM INTO`) from another container, which means sharing the volume. MongoDB uses `mongodump`.
 - Docker persistence: all three engines need a named volume, otherwise a recreated container loses its data.
 
-## 5. Proposed choice
-
-PostgreSQL, accessed through `pgx`.
-
-Reasons specific to AREA:
-1. Hooks, workers and the API write in parallel: MVCC works without workarounds (C2).
-2. Idempotence and the retry queue rely on uniqueness constraints and `SKIP LOCKED` in the same transaction as the business state, with no broker (C3, C8).
-3. The model is mostly relational, and JSONB covers the variability of nodes (C4).
-4. A separate server fits naturally with backups, health checks and the container breakdown (C6).
-
-### Alternatives rejected, for this project
-
-- SQLite: rejected because of its single-writer model against concurrent hooks, workers and API, and because a file would have to be shared between containers. It is durable and ACID, and stays relevant for unit tests.
-- MongoDB: rejected because the model is mostly relational, because multi-document transactions require a replica set (operational complexity for little gain), and because the SSPL license and the Enterprise-only native encryption at rest are less favorable.
-
-### Accepted consequences
-
-- One more server container to configure, secure and back up.
-- A job queue stored in the database: fine for our volume, to be reassessed if throughput grows a lot (see ENG-ASYNC).
-- Schema migrations to manage (plan on `golang-migrate` or `goose`).
-
-### Conditions for review
-
-Revisit this choice if the evaluation shows that JSONB is not enough for workflows, or if a real load exceeds what the database can handle as a job queue.
-
-## 6. Practical evidence (POC)
+### Practical evidence (POC)
 
 The POC lives in `bench/persistence/` (Go and Docker Compose). It runs the same scenarios on the three engines, behind a common `Store` interface.
 
@@ -292,7 +275,7 @@ Scenarios:
 
 Variants tested: `sqlite` (WAL, `synchronous=FULL`, pool of 1 connection), `sqlite-pool` (same settings, pool of 16 connections, so without precautions), `mongo` (`j:true`, write acknowledged after the journal flush) and `mongo-w1` (default write concern).
 
-### Measured results (2026-11-24, average of 5 runs)
+#### Measured results (2026-11-24, average of 5 runs)
 
 Values in parentheses give the minimum and maximum observed when the spread is notable.
 
@@ -316,7 +299,7 @@ Values in parentheses give the minimum and maximum observed when the spread is n
 | MongoDB `j:true` | 17,005 | 0 in all 5 runs |
 | MongoDB `w:1` (default) | 85,584 | 123 on average (22 to 266) |
 
-### Reading the results
+#### Reading the results
 
 - Concurrency: SQLite stays around 860 ops/s whatever the number of goroutines, since it has only one writer at a time. PostgreSQL goes from 870 to 9,929 ops/s between 1 and 16 goroutines (grouped fsyncs benefit from parallelism). MongoDB follows the same trend, a bit lower (477 to 7,777 ops/s).
 - Naive SQLite pool: with 16 connections, `SQLITE_BUSY` errors appear despite `busy_timeout=5000`, and a few jobs stay stuck in the `running` state (9,998 of 10,000 done on average) because the write that finishes the job failed. Throughput also becomes unstable (74 ops/s in the worst case with 16 goroutines). The pool must therefore be capped at 1 connection and errors handled.
@@ -326,10 +309,42 @@ Values in parentheses give the minimum and maximum observed when the spread is n
 - MongoDB durability: with the default write concern, 123 acknowledged writes on average (22 to 266 depending on the run) were lost after a kill. `j:true` must be configured, which lowers throughput. PostgreSQL is durable without tuning.
 - MongoDB is faster on jobs (8.3 s against 18.2 s): claiming is a single operation (`findOneAndUpdate`), whereas PostgreSQL waits for two fsyncs (claim, then job completion). This point favors MongoDB. It weighs little against the other criteria, but it will have to be acknowledged during the defense.
 
-### Limits of the protocol
+#### Limits of the protocol
 
 - Single machine, 5 runs: the averages give orders of magnitude. Throughput with 1 and 4 goroutines varies a lot from run to run (disk fsync, machine activity) and does not separate the engines; throughput with 16 goroutines is stable.
 - Local network: the containers run on `localhost`, so the network latency of server engines is underestimated compared with a real deployment.
 - `docker kill` simulates a process crash, not a power cut: the OS disk cache survives. The test checks journaling, not hardware resilience.
 - Minimal schema: one row per run, without the full inputs/outputs of each node.
 - Versions: PostgreSQL 17, MongoDB 8, SQLite through `modernc.org/sqlite` v1.63.0 (pure Go), Go 1.27.3, `pgx` v5, `mongo-driver` v2.
+
+## Decision
+
+PostgreSQL, accessed through `pgx`.
+
+Reasons specific to AREA:
+1. Hooks, workers and the API write in parallel: MVCC works without workarounds (C2).
+2. Idempotence and the retry queue rely on uniqueness constraints and `SKIP LOCKED` in the same transaction as the business state, with no broker (C3, C8).
+3. The model is mostly relational, and JSONB covers the variability of nodes (C4).
+4. A separate server fits naturally with backups, health checks and the container breakdown (C6).
+
+### Alternatives rejected, for this project
+
+- SQLite: rejected because of its single-writer model against concurrent hooks, workers and API, and because a file would have to be shared between containers. It is durable and ACID, and stays relevant for unit tests.
+- MongoDB: rejected because the model is mostly relational, because multi-document transactions require a replica set (operational complexity for little gain), and because the SSPL license and the Enterprise-only native encryption at rest are less favorable.
+
+## Consequences
+
+### Accepted consequences
+
+- One more server container to configure, secure and back up.
+- A job queue stored in the database: fine for our volume, to be reassessed if throughput grows a lot (see ENG-ASYNC).
+- Schema migrations to manage (plan on `golang-migrate` or `goose`).
+
+### Conditions for review
+
+Revisit this choice if the evaluation shows that JSONB is not enough for workflows, or if a real load exceeds what the database can handle as a job queue.
+
+## References
+
+- [POC code](../../bench/persistence/)
+- [ADR-0001: backend language](0001-backend-language.md)

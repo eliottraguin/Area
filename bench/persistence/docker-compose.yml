@@ -1,4 +1,4 @@
-# Candidate engines for the persistence POC (see docs/technical_choices/persistence_choice.md).
+# Candidate engines for the persistence POC (see docs/adr/0002-persistence-engine.md).
 # Default settings are kept on purpose (fsync is on for PostgreSQL).
 services:
   postgres:
