@@ -108,7 +108,7 @@ React Native stays first under the kinder assumptions. With 5 on accessibility f
 
 ## Why React and React Native Fit AREA
 
-- **A builder that needs a real DOM.** The workflow builder is a graph editor with nodes, connections, and side panels. React Flow gave us draggable nodes and connections in one component, and the page passed axe-core without changes on our side. [React Flow](https://reactflow.dev/)
+- **A builder that needs a real DOM.** The workflow builder is a graph editor with nodes, connections, and side panels. React Flow gave us draggable nodes and connections in one component, and the page passed axe-core without changes on our side. The equivalents for Vue and Svelte are younger or smaller, and we found none for Angular. [React Flow](https://reactflow.dev/)
 - **One client generated from the OpenAPI contract.** The server is written in Go and publishes an OpenAPI contract. Both clients are TypeScript, so we can generate one typed client from that contract and use it in the web and Android apps. The same goes for the shared types and the workflow validation rules.
 - **Session handling on Android.** Expo provides `expo-secure-store`, which keeps the token in the Android Keystore, and `expo-auth-session`, which builds the PKCE request. On the web, `oidc-client-ts` works with a store we replaced by an in-memory one, and we did not find the access token in the browser storage after login. We found no equivalent of these two Expo modules in the Lynx documentation. [expo-secure-store](https://docs.expo.dev/versions/latest/sdk/securestore/) · [expo-auth-session](https://docs.expo.dev/versions/latest/sdk/auth-session/) · [oidc-client-ts](https://github.com/authts/oidc-client-ts)
 - **Accessibility on Android.** React Native exposes roles and states, so our switch appears to Android as a checkable switch with its label. Lynx documents `accessibility-element`, `accessibility-label`, and `accessibility-trait`, but the trait only accepts image, button, and text, so a switch with a checked state cannot be expressed. In our test, none of the Lynx rows or buttons reached the accessibility tree. [Lynx accessibility guide](https://lynxjs.org/next/guide/inclusion/accessibility.md)
@@ -121,6 +121,10 @@ The mock OIDC provider only exists for the spike. It accepts any redirect URI an
 
 ## Decision
 
-We chose React with Vite and TypeScript for the web client, and React Native with Expo for the Android client. They scored 73 out of 85 against 41 for Lynx. We did not choose Lynx. It builds both clients from one codebase, but the web client is a graph editor that benefits from a real DOM, and the Android client needs secure token storage and accessibility support that we could only find in React Native and Expo. The younger ecosystem also matters for a project with a fixed deadline.
+We chose React with Vite and TypeScript for the web client, which scored 88 out of 100, and React Native with Expo for the Android client, which scored 73 out of 85.
+
+- **Svelte, Vue, and Angular** came behind on the graph editor, the main job of the web client. Svelte is our fallback for the web at 77, because Svelte Flow comes from the same maintainers as React Flow. Vue Flow is maintained by the community, and we found no xyflow library for Angular.
+- **Kotlin and Flutter** scored 63 and 62. They would give us a very good Android client, but they need a second language that nobody on the team knows and a second generated client next to the TypeScript one. We would revisit Kotlin if the Android client needs a platform feature that Expo does not cover.
+- **Lynx** scored 41. It builds both clients from one codebase, but the web client is a graph editor that benefits from a real DOM, and we found no secure token storage for it and none of our rows reached the Android accessibility tree. It is also the youngest project of the list.
 
 We accept that we will maintain two UI codebases. We keep the cost down by sharing the generated OpenAPI client, the types, and the workflow logic between them. Screens and components are not shared.
