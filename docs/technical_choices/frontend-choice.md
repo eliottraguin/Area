@@ -74,3 +74,31 @@ We scored both approaches from 0 to 5 on the criteria of #9, plus maintenance. E
 | **Weighted total (/85)** | | **73 (86%)** | **41 (48%)** | |
 
 The result does not depend on our two harshest scores for Lynx. If we give it 3 on accessibility and 2 on session security, because LynxExplorer may be the cause of what we saw, it reaches 50 (59%), which is still well below.
+
+## Why React and React Native Fit AREA
+
+- **A builder that needs a real DOM.** The workflow builder is a graph editor with nodes, connections, and side panels. React Flow gave us draggable nodes and connections in one component, and the page passed axe-core without changes on our side. [React Flow](https://reactflow.dev/)
+- **One client generated from the OpenAPI contract.** The server is written in Go and publishes an OpenAPI contract. Both clients are TypeScript, so we can generate one typed client from that contract and use it in the web and Android apps. The same goes for the shared types and the workflow validation rules.
+- **Session handling on Android.** Expo provides `expo-secure-store`, which keeps the token in the Android Keystore, and `expo-auth-session`, which builds the PKCE request. On the web, `oidc-client-ts` works with a store we replaced by an in-memory one, and we did not find the access token in the browser storage after login. We found no equivalent of these two Expo modules in the Lynx documentation. [expo-secure-store](https://docs.expo.dev/versions/latest/sdk/securestore/) · [expo-auth-session](https://docs.expo.dev/versions/latest/sdk/auth-session/) · [oidc-client-ts](https://github.com/authts/oidc-client-ts)
+- **Accessibility on Android.** React Native exposes roles and states, so our switch appears to Android as a checkable switch with its label. Lynx documents `accessibility-element`, `accessibility-label`, and `accessibility-trait`, but the trait only accepts image, button, and text, so a switch with a checked state cannot be expressed. In our test, none of the Lynx rows or buttons reached the accessibility tree. [Lynx accessibility guide](https://lynxjs.org/next/guide/inclusion/accessibility.md)
+- **Localization.** `i18next` works on the web, in React Native, and in Lynx, and `expo-localization` gives us the device language on Android. We only tested a two-entry dictionary, so plurals and date formats are still to be checked.
+- **Reproducible delivery.** Vite produces a static folder, and Expo can produce the Android project with `expo prebuild` and build it with Gradle, or with EAS. Both can run in a container build stage. We only ran the exports, not a Docker build.
+
+## Security and Dependencies
+
+The mock OIDC provider only exists for the spike. It accepts any redirect URI and signs nothing, so it says nothing about the security of the real flow. What the spike does show is how each client can hold a token: in memory on the web, and in the Keystore on Android through `expo-secure-store`. The Android login is not proven end to end, so we still have to confirm on a development build that the PKCE exchange and the redirect work. We also still have to choose the OIDC library for the real server, check how it is maintained, and validate the `state` and redirect parameters on both clients. [OAuth 2.0 for Native Apps](https://www.rfc-editor.org/rfc/rfc8252.html) · [OAuth 2.0 security recommendations](https://www.rfc-editor.org/rfc/rfc9700.html)
+
+## Decision
+
+We chose React with Vite and TypeScript for the web client, and React Native with Expo for the Android client. They scored 73 out of 85 against 41 for Lynx. We did not choose Lynx. It builds both clients from one codebase, but the web client is a graph editor that benefits from a real DOM, and the Android client needs secure token storage and accessibility support that we could only find in React Native and Expo. The younger ecosystem also matters for a project with a fixed deadline.
+
+We accept that we will maintain two UI codebases. We keep the cost down by sharing the generated OpenAPI client, the types, and the workflow logic between them. Screens and components are not shared.
+
+## Limits of the Prototypes
+
+- We did not complete the OIDC login on Android. Expo Go restarts the app on the redirect, and we did not try a development build.
+- Lynx for Web did not render. The host page needed WebAssembly handling that Vite rejected in development and in production builds, and we stopped there.
+- The Lynx accessibility result comes from LynxExplorer. A host app that enables accessibility itself might behave differently, and we did not build one.
+- The emulator has no speech engine, so we compared the accessibility tree and the TalkBack focus, not the spoken text.
+- We measured nothing on performance. Each number comes from one run, and the sizes cannot be compared across runtimes.
+- The OIDC provider is a mock. The builder only shows one trigger, one condition, and two reactions, and has no validation.
