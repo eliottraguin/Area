@@ -44,3 +44,15 @@ We looked at the three repositories on GitHub on 2026-11-24.
 | Latest release | v0.88.1 (2026-10-27) | SDK templates updated 2026-11-17 | 4.2.0 (2026-10-27) |
 
 All three are active. React Native and Expo have roughly 20 to 40 times more contributors than Lynx, and years more production use, so we expect to find answers faster when something breaks.
+
+### Reproduce the Measurements
+
+The prototypes are throwaway and are not in the repository. Each one starts from the official scaffold of its tool.
+
+```sh
+npm create vite@latest react-web -- --template react-ts
+npx create-expo-app@latest expo-mobile --template blank-typescript
+npm create rspeedy@latest lynx-app -- --template react-ts
+```
+
+We built them with `npm run build`, `npx expo export --platform android`, and `npm run build` respectively. On the emulator, Expo ran in Expo Go (`npx expo start --android`) and Lynx in the LynxExplorer 4.2.0 APK, opened with `adb shell am start -a android.intent.action.VIEW -d 'lynx://open?url=…'` after an `adb reverse` of the dev server port. The accessibility checks used `adb shell uiautomator dump` with TalkBack enabled, and axe-core through Playwright on the web.
